@@ -297,4 +297,6 @@ window.VG_LANG.el = { strings: {
   'Zuweisen nicht möglich.': 'Δεν ήταν δυνατή η ανάθεση.',
   'Claimen nicht möglich.': 'Δεν ήταν δυνατή η δέσμευση.',
   'Diese Figur hat schon jemand.': 'Αυτόν τον χαρακτήρα τον έχει ήδη κάποιος.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Ο διακομιστής είναι γεμάτος τώρα. Είσαι {}ος στην ουρά. Συνεχίζει μόνο του.',
+  'Der Server ist gerade voll.': 'Ο διακομιστής είναι γεμάτος τώρα.',
 } };

@@ -297,4 +297,6 @@ window.VG_LANG.ru = { strings: {
   'Zuweisen nicht möglich.': 'Не удалось назначить.',
   'Claimen nicht möglich.': 'Не удалось занять.',
   'Diese Figur hat schon jemand.': 'Этот персонаж уже занят.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Сервер сейчас заполнен. Ты {}-й в очереди. Всё продолжится само.',
+  'Der Server ist gerade voll.': 'Сервер сейчас заполнен.',
 } };

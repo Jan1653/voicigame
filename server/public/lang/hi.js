@@ -297,4 +297,6 @@ window.VG_LANG.hi = { strings: {
   'Zuweisen nicht möglich.': 'असाइन नहीं हो सका।',
   'Claimen nicht möglich.': 'क्लेम नहीं हो सका।',
   'Diese Figur hat schon jemand.': 'यह किरदार पहले से किसी के पास है।',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'सर्वर अभी भरा हुआ है। कतार में तुम्हारा नंबर {} है। अपने आप आगे बढ़ेगा।',
+  'Der Server ist gerade voll.': 'सर्वर अभी भरा हुआ है।',
 } };

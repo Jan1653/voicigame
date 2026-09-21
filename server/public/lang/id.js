@@ -297,4 +297,6 @@ window.VG_LANG.id = { strings: {
   'Zuweisen nicht möglich.': 'Tidak bisa ditetapkan.',
   'Claimen nicht möglich.': 'Tidak bisa diklaim.',
   'Diese Figur hat schon jemand.': 'Karakter ini sudah diambil orang lain.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Server sedang penuh. Kamu antrean nomor {}. Nanti lanjut sendiri.',
+  'Der Server ist gerade voll.': 'Server sedang penuh.',
 } };

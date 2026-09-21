@@ -3,7 +3,9 @@
 #   docker compose -f deploy/docker-compose.yml up -d --build
 services:
   voicigame:
-    build: ../server
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
     image: voicigame
     container_name: voicigame
     restart: unless-stopped
@@ -11,6 +13,8 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-https://voicigame.duckdns.org}
       MAX_STORAGE_GB: ${MAX_STORAGE_GB:-3}
       MAX_ROOMS: ${MAX_ROOMS:-150}
+      MAX_ACTIVE_ROOMS: ${MAX_ACTIVE_ROOMS:-60}
+      OVERLOAD_LAG_MS: ${OVERLOAD_LAG_MS:-250}
       ROOMS_PER_IP: ${ROOMS_PER_IP:-8}
       MAX_PLAYERS_PER_ROOM: ${MAX_PLAYERS_PER_ROOM:-16}
       DUB_MAX_PACK_MB: ${DUB_MAX_PACK_MB:-800}

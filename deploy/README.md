@@ -71,12 +71,16 @@ In `deploy/.env`. After a change: `docker compose -f /opt/voicigame/deploy/docke
 | `PROXY_NETWORK` | Docker network of the proxy container | `caddy` |
 | `MAX_STORAGE_GB` | Disk space all rooms together may use | `3` |
 | `MEM_LIMIT`, `CPUS` | Memory and CPU for the container | `800m`, `1.0` |
-| `MAX_ROOMS` | Open rooms at the same time | `150` |
+| `MAX_ACTIVE_ROOMS` | Rooms in use at the same time (PC or phone connected). More new rooms wait in a queue | `60` |
+| `OVERLOAD_LAG_MS` | New rooms also wait when the server lags more than this | `250` |
+| `MAX_ROOMS` | Open rooms at the same time, including idle ones | `150` |
 | `ROOMS_PER_IP` | New rooms per address within 10 minutes | `8` |
 | `MAX_PLAYERS_PER_ROOM` | Phones and browsers per room | `16` |
 | `DUB_MAX_PACK_MB` | Largest dub pack a room may upload | `800` |
 | `DUB_MAX_VIDEO_MIN` | Longest video that is converted for browsers and exported | `20` |
 | `FFMPEG_THREADS` | Threads per ffmpeg job (only one job runs at a time) | `1` |
+
+The server also hands out the current mod files (`/api/mod`), mods installed by hand update themselves from there. The Docker image is built from the repository root for that.
 
 Rooms and their files are removed automatically after a while without activity, and all of them on a restart. Anyone who knows the address can create a room, so keep `MAX_STORAGE_GB` below the free space you want to leave for the other sites.
 

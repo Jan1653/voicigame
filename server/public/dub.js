@@ -1724,7 +1724,11 @@
       btnEl.disabled = true;
       try {
         await setupAudio();
-        const code = await createRoom(name);
+        const code = await createRoom(name, (pos) => {
+          err.textContent = t(`Der Server ist gerade voll. Du bist in der Warteschlange auf Platz ${pos}. Es geht automatisch weiter.`);
+          err.hidden = false;
+        });
+        err.hidden = true;
         S.code = code;
         S.name = name;
         S.token = null;
@@ -1742,11 +1746,21 @@
   initJoin();
 
 
-  async function createRoom(name) {
-    const r = await fetch('/api/rooms?game=dub', { method: 'POST' });
-    if (!r.ok) throw new Error(t('Der Raum konnte nicht erstellt werden.'));
-    const j = await r.json();
-    try { localStorage.setItem('vp:key:' + j.code, j.hostKey); } catch {}
-    return j.code;
+  async function createRoom(name, onWait) {
+    let ticket = '';
+    for (;;) {
+      const r = await fetch('/api/rooms?game=dub' + (ticket ? '&ticket=' + encodeURIComponent(ticket) : ''), { method: 'POST' });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 503 && j.queue) {
+        // Server voll: der Reihe nach warten, alle paar Sekunden mit derselben Wartenummer nachfragen
+        ticket = j.queue.ticket;
+        onWait?.(j.queue.position);
+        await new Promise((res) => setTimeout(res, 4000));
+        continue;
+      }
+      if (!r.ok) throw new Error(j.message || t('Der Raum konnte nicht erstellt werden.'));
+      try { localStorage.setItem('vp:key:' + j.code, j.hostKey); } catch {}
+      return j.code;
+    }
   }
 })();

@@ -297,4 +297,6 @@ window.VG_LANG.sv = { strings: {
   'Zuweisen nicht möglich.': 'Det gick inte att tilldela.',
   'Claimen nicht möglich.': 'Det gick inte att paxa.',
   'Diese Figur hat schon jemand.': 'Någon har redan paxat den här karaktären.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Servern är full just nu. Du är nummer {} i kön. Det fortsätter av sig självt.',
+  'Der Server ist gerade voll.': 'Servern är full just nu.',
 } };

@@ -28,7 +28,9 @@ Set-Content -Path $lock -Value "$repo $(Get-Date -Format s)" -Encoding UTF8
 try {
   # Mod und Testtreiber aus dieser Arbeitskopie, Server-Adresse für den Mod
   # flush_stdout_on_print: jede Protokollzeile sofort schreiben, sonst fehlt nach dem Beenden das Ende
-  $cfg = "[application]`r`n`r`nrun/flush_stdout_on_print=true`r`n`r`n[autoload]`r`n`r`nVoicigame=`"*$repo/mod/voicigame/main.gd`"`r`nVoicigameTest=`"*$repo/tools/test_driver.gd`"`r`n"
+  # VG_MOD_DIR: anderer Mod-Ordner (z. B. eine Kopie für den Update-Test), sonst der aus dieser Arbeitskopie
+  $modDir = if ($env:VG_MOD_DIR) { $env:VG_MOD_DIR.Replace('\', '/') } else { "$repo/mod/voicigame" }
+  $cfg = "[application]`r`n`r`nrun/flush_stdout_on_print=true`r`n`r`n[autoload]`r`n`r`nVoicigame=`"*$modDir/main.gd`"`r`nVoicigameTest=`"*$repo/tools/test_driver.gd`"`r`n"
   [IO.File]::WriteAllText("$game\override.cfg", $cfg)
   $vcfg = "[server]`r`n`r`nurl=`"http://localhost:$Port`"`r`n"
   if ($env:VG_LANG) { $vcfg += "`r`n[ui]`r`n`r`nlang=`"$($env:VG_LANG)`"`r`n" }   # Sprache des Mods zum Testen
@@ -38,7 +40,7 @@ try {
 
   if (Test-Path "$ud\voicigame_test") { Remove-Item "$ud\voicigame_test" -Recurse -Force }
   New-Item -ItemType Directory -Force "$ud\voicigame_test" | Out-Null
-  Get-Process | Where-Object { $_.ProcessName -like "The Choicer Voicer*" } | Stop-Process -ErrorAction SilentlyContinue
+  Get-Process | Where-Object { $_.ProcessName -like "*Choicer*Voicer*" } | Stop-Process -ErrorAction SilentlyContinue
 
   $phoneProc = $null
   if ($Phone -ne "") {
@@ -63,7 +65,12 @@ try {
   }
 
   $env:VOICIGAME_TEST = $Plan
-  Start-Process -FilePath "$game\The Choicer Voicer.exe" -WorkingDirectory $game | Out-Null
+  # Spiel-exe: "The Choicer Voicer.exe", sonst eine andere mit Choicer im Namen (z. B. die compatibility-exe)
+  $exe = Join-Path $game "The Choicer Voicer.exe"
+  if (-not (Test-Path $exe)) {
+    $exe = (Get-ChildItem $game -Filter "*.exe" | Where-Object { $_.Name -match "choicer" -and $_.Name -notmatch "\.console\.exe$" } | Select-Object -First 1).FullName
+  }
+  Start-Process -FilePath $exe -WorkingDirectory $game | Out-Null
   $deadline = (Get-Date).AddSeconds($Seconds)
   while ((Get-Date) -lt $deadline) {
     if (Test-Path "$ud\voicigame_test\log.txt") {
@@ -72,7 +79,7 @@ try {
     Start-Sleep -Milliseconds 500
   }
   Start-Sleep 1
-  $gp = Get-Process | Where-Object { $_.ProcessName -like "The Choicer Voicer*" }
+  $gp = Get-Process | Where-Object { $_.ProcessName -like "*Choicer*Voicer*" }
   foreach ($g in $gp) { "Spiel am Ende: reagiert=$($g.Responding), CPU=$([int]$g.CPU) s, RAM=$([int]($g.WorkingSet64/1MB)) MB" }
   $gp | Stop-Process -ErrorAction SilentlyContinue
   if ($phoneProc -and -not $phoneProc.HasExited) { Stop-Process -Id $phoneProc.Id -ErrorAction SilentlyContinue }

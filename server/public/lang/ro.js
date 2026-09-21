@@ -297,4 +297,6 @@ window.VG_LANG.ro = { strings: {
   'Zuweisen nicht möglich.': 'Nu s-a putut atribui.',
   'Claimen nicht möglich.': 'Nu s-a putut rezerva.',
   'Diese Figur hat schon jemand.': 'Personajul ăsta e deja rezervat.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Serverul e plin acum. Ești al {}-lea la coadă. Continuă singur.',
+  'Der Server ist gerade voll.': 'Serverul e plin acum.',
 } };

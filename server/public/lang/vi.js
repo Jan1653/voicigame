@@ -297,4 +297,6 @@ window.VG_LANG.vi = { strings: {
   'Zuweisen nicht möglich.': 'Không thể phân công.',
   'Claimen nicht möglich.': 'Không thể nhận.',
   'Diese Figur hat schon jemand.': 'Nhân vật này đã có người nhận.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Máy chủ đang đầy. Bạn đứng thứ {} trong hàng chờ. Sẽ tự tiếp tục.',
+  'Der Server ist gerade voll.': 'Máy chủ đang đầy.',
 } };

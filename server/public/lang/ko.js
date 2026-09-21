@@ -297,4 +297,6 @@ window.VG_LANG.ko = { strings: {
   'Zuweisen nicht möglich.': '배정할 수 없어요.',
   'Claimen nicht möglich.': '찜할 수 없어요.',
   'Diese Figur hat schon jemand.': '이 캐릭터는 이미 누가 찜했어요.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': '지금 서버가 가득 찼어요. 대기열 {}번째예요. 자동으로 이어져요.',
+  'Der Server ist gerade voll.': '지금 서버가 가득 찼어요.',
 } };

@@ -297,4 +297,6 @@ window.VG_LANG.hu = { strings: {
   'Zuweisen nicht möglich.': 'Nem sikerült kiosztani.',
   'Claimen nicht möglich.': 'Nem sikerült lefoglalni.',
   'Diese Figur hat schon jemand.': 'Ezt a karaktert már valaki lefoglalta.',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'A szerver most tele van. A sorban a(z) {}. helyen állsz. Magától folytatódik.',
+  'Der Server ist gerade voll.': 'A szerver most tele van.',
 } };

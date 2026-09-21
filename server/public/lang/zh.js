@@ -297,4 +297,6 @@ window.VG_LANG.zh = { strings: {
   'Zuweisen nicht möglich.': '无法分配。',
   'Claimen nicht möglich.': '无法认领。',
   'Diese Figur hat schon jemand.': '这个角色已经有人认领了。',
+  'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': '服务器现在已满。你在排队的第 {} 位，轮到你时会自动继续。',
+  'Der Server ist gerade voll.': '服务器现在已满。',
 } };

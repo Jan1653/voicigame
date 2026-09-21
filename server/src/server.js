@@ -12,6 +12,8 @@ import { relayFrame } from './stream.js';
 import { allowRoom, MAX_ROOMS, MAX_PLAYERS_PER_ROOM, checkStorage, storageAdd } from './limits.js';
 import { installDub } from './dub.js';
 import { count as countStat, flush as flushStats, startAutoFlush } from './stats.js';
+import { admit, isOverloaded, MAX_ACTIVE_ROOMS } from './queue.js';
+import { installMod } from './mod.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -36,6 +38,8 @@ for (const name of fs.readdirSync(DATA_DIR)) {
   if (/^[A-Z]{4}$/.test(name)) fs.rmSync(path.join(DATA_DIR, name), { recursive: true, force: true });
 }
 const rooms = new Map();
+/** In Benutzung: PC oder mindestens ein Handy verbunden. */
+const isActive = (room) => room.hosts.size > 0 || [...room.players.values()].some((p) => p.connected && p.kind === 'phone');
 
 /* ---------- ffmpeg (optional) ----------
  * Handys können nicht jedes Format abspielen (z. B. Ogg auf iPhones).
@@ -114,9 +118,7 @@ app.set('trust proxy', process.env.TRUST_PROXY || 'loopback, uniquelocal');
 app.get('/api/health', (req, res) => {
   if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip)) return res.status(404).end();
   let busy = 0;
-  for (const room of rooms.values()) {
-    if (room.hosts.size || [...room.players.values()].some((p) => p.connected && p.kind === 'phone')) busy++;
-  }
+  for (const room of rooms.values()) if (isActive(room)) busy++;
   res.json({ ok: true, rooms: rooms.size, busy });
 });
 
@@ -124,10 +126,17 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Dub-Modus (Synchronisieren): eigene Datei
 const dub = installDub(app, { getRoom, isHost, send, toHosts, toPhones, broadcastState });
+// Aktuelle Mod-Dateien für den Auto-Updater im Spiel
+installMod(app);
 
 app.post('/api/rooms', (req, res) => {
-  if (rooms.size >= MAX_ROOMS) {
-    return res.status(503).json({ error: 'too_many_rooms', message: 'Gerade sind zu viele Räume offen. Versuch es gleich nochmal.' });
+  // Voll oder überlastet: nicht ablehnen, sondern der Reihe nach warten lassen (Client fragt mit Ticket nach)
+  let active = 0;
+  for (const r of rooms.values()) if (isActive(r)) active++;
+  const free = isOverloaded() ? 0 : Math.min(MAX_ACTIVE_ROOMS - active, MAX_ROOMS - rooms.size);
+  const q = admit(String(req.query.ticket || ''), free);
+  if (!q.ok) {
+    return res.status(503).json({ error: 'busy', message: 'Der Server ist gerade voll.', queue: { ticket: q.ticket, position: q.position } });
   }
   if (!allowRoom(req.ip)) {
     return res.status(429).json({ error: 'rate_limited', message: 'Zu viele neue Räume. Warte ein paar Minuten.' });
@@ -579,7 +588,7 @@ setInterval(() => {
 setInterval(() => {
   const now = Date.now();
   for (const [code, room] of rooms) {
-    const active = room.hosts.size || [...room.players.values()].some((p) => p.connected && p.kind === 'phone');
+    const active = isActive(room);
     const closed = room.closed && !room.hosts.size && now - room.closedAt > ROOM_CLOSED_MS;
     if (closed || (!active && now - room.lastActive > ROOM_IDLE_MS)) {
       room.dub?.destroy();

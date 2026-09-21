@@ -1,0 +1,9 @@
+# Build context is the repository root (deploy/docker-compose.yml): only server/ and mod/ are needed
+**/node_modules
+.git
+dist
+docs
+tools
+deploy
+*.md
+*.log

@@ -46,6 +46,8 @@ Every Voicitool update brings the newest mod version with it. **Remove** in the 
 
 To remove the mod, delete the `Voicigame=` line (or the whole `override.cfg` if nothing else is in it).
 
+**Updates:** installed by hand, the mod updates itself. On start it asks the server for a newer version, downloads the changed files, checks them and replaces the old ones. The new version runs from the next start, the Voicigame menu tells you. If the folder is write protected, it only shows that a new version is out. Installed with Voicitool, Voicitool does the updates instead.
+
 Tested with version 0.5.3 of the game, with and without the Steam multiplayer mod.
 
 ## Play
@@ -71,6 +73,9 @@ lang="en"          ; mod language, empty = Windows language
 [join]
 name="Alex"        ; your name, set in the lobby (hosting and joining)
 
+[update]
+auto=false         ; no automatic mod updates (default: on)
+
 [stream]
 fps=8              ; live picture: frames per second
 width=640          ; width of the picture in pixels
@@ -95,6 +100,7 @@ ffmpeg is optional. Without it, dub videos only play in some browsers and the vi
 
 - The mod runs on Windows, the website on any current phone or browser.
 - Rooms only live in the server's memory. Restarting the server ends running rooms.
+- If the server is full, new rooms wait in a queue (first come, first served) and start on their own as soon as there is space. Rooms that are already running are not affected.
 - The judging is the game's own. For very short clips it sometimes gives low scores even for good takes. That happens without the mod too.
 - Recordings on phones can start a little early or late, depending on the phone's audio delay. In dub mode you can drag your take into place on the waveform.
 

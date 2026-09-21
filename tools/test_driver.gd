@@ -123,6 +123,16 @@ func _run(plan: String) -> void:
 	if plan == "lobby":
 		_note("ENDE")
 		return
+	if plan == "warteschlange":
+		# Server voll (Test mit MAX_ACTIVE_ROOMS=1 und belegtem Platz): der Raum muss von selbst kommen
+		var t0 := Time.get_ticks_msec()
+		while not vg.bridge.has_room() and Time.get_ticks_msec() - t0 < 90000:
+			await get_tree().create_timer(0.5).timeout
+		_note("Raum nach der Warteschlange: %s nach %d s" % [vg.bridge.room_code, (Time.get_ticks_msec() - t0) / 1000])
+		await get_tree().create_timer(3.0).timeout
+		await _shot("lobby_nach_warteschlange")
+		_note("ENDE")
+		return
 
 	# Auf das simulierte Handy warten
 	var t := 0.0
