@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4cc3f2">
+  <title>Mitspielen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Duru+Sans&family=Saira:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dub.css">
+  <script src="theme.js"></script>
+  <script src="lang/strings.js"></script>
+  <script>
+    // Zusatzsprache (lang/<code>.js) schon vor dem ersten Anzeigen laden, die übrigen erst beim Umschalten.
+    // Gleiche Reihenfolge wie in i18n.js: Adresse ?lang=, eigene Wahl, sonst Sprache des Geräts.
+    (function () {
+      var files = window.VG_LANG_FILES || [];
+      var ok = function (l) { return ['en', 'de', 'es', 'fr', 'pt', 'it'].concat(files).indexOf(l) >= 0; };
+      var q = new URLSearchParams(location.search);
+      var saved = null;
+      try { saved = localStorage.getItem('voicigame.lang'); } catch (e) { /* privates Fenster */ }
+      var sys = (navigator.languages || [navigator.language]).map(function (l) { return String(l || '').split('-')[0].toLowerCase(); });
+      var l = [q.get('lang'), saved].concat(sys).filter(ok)[0];
+      if (files.indexOf(l) >= 0) document.write('<script src="lang/' + l + '.js"><\/script>');
+    })();
+  </script>
+  <script src="i18n.js"></script>
+</head>
+<body>
+  <div class="sky" aria-hidden="true">
+    <span class="bubble b1"></span><span class="bubble b2"></span><span class="bubble b3"></span>
+    <span class="bubble b4"></span><span class="bubble b5"></span>
+    <div class="hill"></div>
+  </div>
+
+  <main id="app">
+    <!-- Beitreten -->
+    <section id="view-join" class="view">
+      <h1 class="logo">Mitspielen</h1>
+      <p class="lead">Gib den Raumcode vom PC ein und such dir einen Namen aus.</p>
+      <form id="join-form" class="glass stack join-card" autocomplete="off">
+        <label>Raumcode
+          <input id="join-code" class="field code-field" maxlength="4" inputmode="text" autocapitalize="characters" required>
+        </label>
+        <label>Dein Name
+          <input id="join-name" class="field" maxlength="24" required>
+        </label>
+        <button class="btn btn-go" type="submit">Beitreten</button>
+        <p id="join-error" class="error" hidden></p>
+      </form>
+      <p class="hint">Beim Beitreten fragt dein Handy nach dem Mikrofon. Das brauchst du für deine Aufnahmen.</p>
+    </section>
+
+    <!-- Lobby -->
+    <section id="view-lobby" class="view" hidden>
+      <header class="topbar">
+        <span class="room-chip" id="lobby-code"></span>
+        <span class="me-name" id="lobby-me"></span>
+      </header>
+
+      <div class="glass" id="mode-card">
+        <h2 id="mode-title"></h2>
+        <p id="mode-text" class="muted"></p>
+        <div id="claim-grid" class="claim-grid"></div>
+        <ol id="order-list" class="order-list"></ol>
+      </div>
+
+      <div class="glass" id="dl-card">
+        <div class="row-between">
+          <h2>Deine Clips</h2>
+          <span id="dl-count" class="muted"></span>
+        </div>
+        <div class="meter"><span id="dl-bar"></span></div>
+        <p id="dl-text" class="muted small"></p>
+      </div>
+
+      <div class="glass" id="players-card">
+        <h2>Mitspieler</h2>
+        <ul id="player-list" class="player-list"></ul>
+      </div>
+
+      <p id="lobby-wait" class="status-line"></p>
+    </section>
+
+    <!-- Spiel -->
+    <section id="view-game" class="view" hidden>
+      <header class="topbar">
+        <span class="room-chip" id="game-code"></span>
+        <span class="muted" id="game-count"></span>
+      </header>
+
+      <div id="live-card" class="glass live-card" hidden>
+        <div class="live-frame">
+          <img id="live-img" alt="Live-Bild vom Spiel" hidden>
+          <p id="live-wait" class="live-wait">Warte auf das Bild vom PC …</p>
+          <span class="live-badge">LIVE</span>
+        </div>
+        <div class="row-center">
+          <button id="btn-live-sound" class="btn btn-soft" type="button">Ton an</button>
+          <button id="btn-live-off" class="btn btn-soft" type="button">Live-Bild aus</button>
+        </div>
+      </div>
+      <div id="live-offer" class="row-center" hidden>
+        <button id="btn-live-on" class="btn btn-soft" type="button">Live-Bild vom Spiel ansehen</button>
+      </div>
+
+      <div class="glass now">
+        <p id="now-who" class="now-who"></p>
+        <p id="now-clip" class="muted"></p>
+      </div>
+
+      <div id="voice-card" class="glass voice-card" hidden>
+        <div class="row-between">
+          <h2 id="voice-title">So soll es klingen</h2>
+          <span class="legend"><i class="sw sw-target"></i>Ziel <i class="sw sw-you"></i>Du</span>
+        </div>
+        <canvas id="voice-canvas" class="voice-canvas" role="img" aria-label="Tonhöhe vom Original und von dir über die Zeit"></canvas>
+        <div id="score-box" class="score-box" hidden>
+          <p class="score-main"><span id="score-grade" class="score-grade"></span><span id="score-num" class="muted"></span></p>
+          <div class="score-row"><span>Tonhöhe</span><div class="meter"><span id="m-pitch"></span></div></div>
+          <div class="score-row"><span>Timing</span><div class="meter"><span id="m-rhythm"></span></div></div>
+          <div class="score-row"><span>Länge</span><div class="meter"><span id="m-length"></span></div></div>
+          <p id="score-tip" class="muted small"></p>
+        </div>
+        <div class="row-center">
+          <button id="btn-listen" class="btn btn-soft" type="button">Original anhören</button>
+          <button id="btn-mine" class="btn btn-go" type="button" hidden>Deine Aufnahme anhören</button>
+        </div>
+      </div>
+
+      <div id="turn-box" class="turn-box" hidden>
+        <button id="orb" class="orb" type="button" aria-live="polite">
+          <svg class="orb-ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="54" class="ring-track"/>
+            <circle cx="60" cy="60" r="54" class="ring-fill" id="ring-fill"/>
+          </svg>
+          <span id="orb-label" class="orb-label"></span>
+        </button>
+        <p id="turn-status" class="status-line"></p>
+        <div class="row-center">
+          <button id="btn-stop" class="btn btn-soft" type="button" hidden>Aufnahme beenden</button>
+        </div>
+      </div>
+
+      <div id="result-box" class="glass result" hidden>
+        <p class="muted small">Letzte Bewertung</p>
+        <p id="result-main" class="result-main"></p>
+        <p id="result-sub" class="muted"></p>
+      </div>
+
+      <p id="next-mine" class="status-line"></p>
+    </section>
+
+    <!-- Ende -->
+    <section id="view-end" class="view" hidden>
+      <h1 class="logo">Fertig!</h1>
+      <div class="glass">
+        <h2 id="end-title">Deine Runden</h2>
+        <ul id="end-list" class="player-list"></ul>
+      </div>
+      <p id="end-hint" class="status-line">Bleib im Raum, der Host kann eine neue Runde starten.</p>
+    </section>
+
+    <!-- Dub-Modus (Synchronisieren), aufgebaut von dub.js -->
+    <section id="view-dub" class="view dub" hidden></section>
+  </main>
+
+  <div class="page-tools"></div>
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+  <script src="dub.js"></script>
+</body>
+</html>

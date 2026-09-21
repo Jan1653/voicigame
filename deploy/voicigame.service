@@ -1,0 +1,42 @@
+# systemd service for the voicigame server.
+# Copy to /etc/systemd/system/voicigame.service, adjust PORT and paths, then:
+#   systemctl daemon-reload && systemctl enable --now voicigame
+[Unit]
+Description=voicigame server
+After=network.target
+
+[Service]
+Type=simple
+User=voicigame
+Group=voicigame
+WorkingDirectory=/opt/voicigame/server
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=3
+
+# Only reachable through the reverse proxy on this machine.
+Environment=HOST=127.0.0.1
+# Pick a port no other service on the VPS uses (check with: ss -ltnp).
+Environment=PORT=8093
+Environment=PUBLIC_URL=https://voicigame.duckdns.org
+Environment=DATA_DIR=/var/lib/voicigame
+Environment=NODE_ENV=production
+# Disk space for all rooms together; leave room for the other sites on this machine.
+Environment=MAX_STORAGE_GB=8
+
+# Keep other games on the same VPS responsive.
+Nice=5
+CPUQuota=150%
+MemoryMax=1G
+TasksMax=200
+
+# Sandbox: the service may only write to its data folder.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/voicigame
+StateDirectory=voicigame
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+# voicigame server as a container next to a reverse proxy container (e.g. Caddy) on the same Docker network.
+# Settings go into deploy/.env (copy .env.example). Start or update:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+services:
+  voicigame:
+    build: ../server
+    image: voicigame
+    container_name: voicigame
+    restart: unless-stopped
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:-https://voicigame.duckdns.org}
+      MAX_STORAGE_GB: ${MAX_STORAGE_GB:-3}
+      MAX_ROOMS: ${MAX_ROOMS:-150}
+      ROOMS_PER_IP: ${ROOMS_PER_IP:-8}
+      MAX_PLAYERS_PER_ROOM: ${MAX_PLAYERS_PER_ROOM:-16}
+      DUB_MAX_PACK_MB: ${DUB_MAX_PACK_MB:-800}
+      DUB_MAX_VIDEO_MIN: ${DUB_MAX_VIDEO_MIN:-20}
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-1}
+    # Keep the other sites on the same machine responsive
+    mem_limit: ${MEM_LIMIT:-800m}
+    cpus: ${CPUS:-1.0}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks: [proxy]
+
+networks:
+  proxy:
+    # The network the proxy container is in, so it can reach this one as voicigame:8080
+    external: true
+    name: ${PROXY_NETWORK:-caddy}

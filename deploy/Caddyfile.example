@@ -1,0 +1,15 @@
+# Add one of these blocks to your existing Caddyfile. It only answers for voicigame.duckdns.org,
+# so other sites on the same Caddy stay untouched. Caddy fetches the HTTPS certificate on its own
+# and passes WebSockets through.
+
+# Caddy and voicigame as Docker containers on the same network (docker-compose.yml):
+voicigame.duckdns.org {
+	encode zstd gzip
+	reverse_proxy voicigame:8080
+}
+
+# Caddy installed on the machine, voicigame as a systemd service (voicigame.service, PORT=8093):
+# voicigame.duckdns.org {
+# 	encode zstd gzip
+# 	reverse_proxy 127.0.0.1:8093
+# }

@@ -1,0 +1,12 @@
+# Checks GitHub for a new voicigame version and rebuilds the container, see update.sh.
+# Started by voicigame-deploy.timer. YOUR_USER must be allowed to use Docker.
+[Unit]
+Description=voicigame auto deploy
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=YOUR_USER
+ExecStart=/bin/sh /opt/voicigame/deploy/update.sh
+Nice=10

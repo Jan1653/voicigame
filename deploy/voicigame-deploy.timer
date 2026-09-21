@@ -1,0 +1,10 @@
+# Runs voicigame-deploy.service every 2 minutes.
+[Unit]
+Description=voicigame auto deploy every 2 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+
+[Install]
+WantedBy=timers.target
