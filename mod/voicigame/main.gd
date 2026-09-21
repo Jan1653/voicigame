@@ -248,6 +248,13 @@ func _attach_show(match_master: Node) -> void:
 		for p in bridge.web_players():
 			if str(p.id) == slots[i]:
 				names[i] = str(p.name)
+	# PC-Spieler: eingetragener Name statt der Figur des Spiels, damit die Handys wissen, wer das ist
+	var own := Players.saved_name()
+	var metro = get_node_or_null("/root/Metro")
+	if own != "" and metro:
+		for i in metro.current_players.size():
+			if not slots.has(i):
+				names[i] = own
 	var hook: Node = ShowHook.new()
 	hook.name = "ShowHook"
 	add_child(hook)

@@ -12,6 +12,35 @@ const I18n = preload("i18n.gd")
 const COLORS := ["#29b6f6", "#ef5350", "#66bb6a", "#ffca28", "#ab47bc", "#ff7043", "#26c6da", "#ec407a"]
 
 
+const CONFIG := "user://voicigame.cfg"
+
+
+## Eigener Name, den der Spieler im Mod eingetragen hat (Host und Beitreten teilen ihn). Leer = keiner.
+static func saved_name() -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load(CONFIG) != OK:
+		return ""
+	return str(cfg.get_value("join", "name", "")).strip_edges().left(24)
+
+
+static func save_name(name: String) -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(CONFIG) != OK and FileAccess.file_exists(CONFIG):
+		return   # Datei da, aber nicht lesbar: nichts überschreiben
+	cfg.set_value("join", "name", name.strip_edges().left(24))
+	cfg.save(CONFIG)
+
+
+## Name der Figur aus dem Spielerprofil des Spiels (Vorschlag, wenn noch kein Name eingetragen ist).
+static func profile_name(profile: Node) -> String:
+	var pack := str(profile.get("contestant")) if profile else ""
+	if pack == "":
+		return ""
+	var path := PACK_ROOT + pack + "/config_player.json"
+	var data = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+	return str(data.get("name", pack)) if data is Dictionary else pack
+
+
 static func device_for(player_id: String) -> String:
 	return DEVICE_PREFIX + player_id
 

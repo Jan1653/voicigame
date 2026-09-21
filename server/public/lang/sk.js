@@ -284,4 +284,6 @@ window.VG_LANG.sk = { strings: {
   'Du schaust dieser Runde zu.': 'Toto kolo sleduješ.',
   'Der PC hat die Runde beendet.': 'PC ukončil kolo.',
   'Das Video ist für den Export zu lang.': 'Video je na export príliš dlhé.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Hra na PC ešte vkladá posledné nahrávky. Hneď to začne.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Hra na PC ešte nedokončila poslednú repliku.',
 } };

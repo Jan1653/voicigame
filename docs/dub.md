@@ -35,16 +35,16 @@ Ein Video, jeder spricht die Zeilen seiner Figuren. Läuft im Browser allein (oh
 
 WebSocket (`/ws`, Typen beginnen mit `dub.`), der Zustand steht in `state.dub`.
 
-- Browser an Server: `dub.open {key}` (Ersteller wird Spielleitung), `dub.claim`, `dub.spectate`, `dub.ready {have, need, version}`, `dub.activity`, `dub.chat`, `dub.time`
-- Spielleitung und Spiel: `dub.settings {chrono, orderMode}`, `dub.assign`, `dub.start {force}`, `dub.skip`, `dub.hub`, `dub.reset`, `dub.watch`, `dub.watch.stop`, `dub.export`
-- nur Spiel: `dub.open {source:'game'}`, `local.set`, `dub.claim {playerId}`, `dub.scores`, `dub.close`
+- Browser an Server: `dub.open {key}` (Ersteller wird Spielleitung), `dub.claim {character, on}`, `dub.spectate`, `dub.ready {have, need, version}`, `dub.activity`, `dub.chat`, `dub.time`
+- Spielleitung und Spiel: `dub.settings {chrono, orderMode}`, `dub.assign`, `dub.start {force}`, `dub.skip {clipId}` (nur diese Zeile, doppelt geschickt ändert nichts), `dub.hub`, `dub.reset`, `dub.watch`, `dub.watch.stop`, `dub.export`
+- nur Spiel: `dub.open {source:'game'}`, `local.set`, `dub.claim {playerId, on}`, `dub.done` (letzte Zeile eingespielt), `dub.scores`, `dub.close`
 - Server an alle: `state`, `dub.watch {at}` (Serverzeit), `dub.watch.stop`, `dub.hub`, `dub.time {t, server}`; an das Spiel zusätzlich `dub.take {clipId, playerId, url}`
 
 HTTP (`/api/rooms/:code/dub/…`, Zugang über `?t=<Token>` oder `X-Host-Key`)
 
 | Aufruf | Zweck |
 |---|---|
-| `POST pack/begin`, `PUT pack/file?name&offset`, `POST pack/commit` | Pack in Dateien hochladen (Stücke erlaubt), übernehmen; `reuse` = gleiches Pack, neue Reihenfolge |
+| `POST pack/begin`, `PUT pack/file?name&offset`, `POST pack/commit` | Pack in Dateien hochladen (Stücke erlaubt, abgebrochenes Stück wird verworfen, `409 bad_offset` nennt den Stand), übernehmen; `reuse` = gleiches Pack, neue Reihenfolge |
 | `PUT pack/zip` | Pack als ZIP |
 | `GET pack.json`, `GET file/:name[?fmt=mp3]`, `GET video` | Pack für die Browser |
 | `POST takes/:clipId[?player=local-1]`, `GET takes/:clipId/:playerId` | Aufnahmen (WAV) |
@@ -62,7 +62,17 @@ HTTP (`/api/rooms/:code/dub/…`, Zugang über `?t=<Token>` oder `X-Host-Key`)
 - Reihenfolge im Browser-Raum: Standard „wie im Video“ (wählbar); im Spiel-Raum die Reihenfolge des Spiels
 - Spielleitung: wer den Raum im Browser erstellt hat, sonst der erste verbundene Web-Spieler; das Spiel darf immer
 - Wertung im Browser-Raum: Auswertung am Handy (Tonhöhe, Timing, Länge); im Spiel-Raum die Wertung des Spiels
-- Unfertige Solo-Sitzung des Spiels: Abfrage wird ausgeblendet, der Ordner `.temp/dub_mode/<Pack>` während der Runde in `<Pack> (vor Voicigame)` umbenannt und danach zurückgeholt (auch nach einem Absturz beim nächsten Start)
+- Unfertige Solo-Sitzung des Spiels: Abfrage wird ausgeblendet, der Ordner `.temp/dub_mode/<Pack>` während der Runde in `<Pack> (vor Voicigame)` umbenannt. Der Ordner der Runde bekommt die Datei `voicigame_runde.txt`; danach (oder nach einem Absturz beim nächsten Start) kommt er in den Papierkorb und die Solo-Sitzung zurück
+- Mod und Server im Spiel-Raum:
+  - neue Runde aus dem Spiel: erst `dub.hub` (vorige Runde endet), dann Pack neu oder wiederverwenden
+  - Szene mittendrin verlassen: offene PC-Aufnahmen noch schicken (höchstens 15 s), dann `dub.hub`
+  - PC-Aufnahmen werden vorgemerkt und erst geschickt, wenn der Server bei ihrer Zeile ist (der PC darf den Web-Spielern voraus sein)
+  - Spielleitung geht mittendrin in die Lobby: das Spiel hält an und zeigt die Lobby, weiter mit „Runde starten“
+  - Pack-Upload in 2-MB-Stücken, bis zu 6 Versuche mit Pause, fortgesetzt ab dem Stand des Servers
+  - Handy-Aufnahme lässt sich 4-mal nicht laden: Zeile bleibt im Original
+  - „Gemeinsam anschauen“ erst, wenn das Spiel die letzte Zeile eingespielt hat (`dub.done`)
+  - Video-Download zuerst als `.part`, nur bei Erfolg umbenannt, sonst Papierkorb
+  - Signal `scene_left` von `dub_hook.gd`: Dub-Szene verlassen
 - Web-Spieler, die die Verbindung verlieren: 20 s Pause, dann wird ihre Zeile übersprungen und ihre weiteren Zeilen gehen an die anderen
 - Wertung im Spiel: der Bewertungsalgorithmus des Spiels schwankt bei sehr kurzen Zeilen (auch bei perfekter Aufnahme gelegentlich 0 %)
 - Aufnahmen und Packs liegen nur im Raum auf dem Server und verschwinden mit ihm (3 h ohne Aktivität)
@@ -70,5 +80,5 @@ HTTP (`/api/rooms/:code/dub/…`, Zugang über `?t=<Token>` oder `X-Host-Key`)
 ## Testen
 
 - `tools/fake-dub-phone.js`: simuliertes Handy (kann auch Raum erstellen und Pack hochladen)
-- `tools/run_test.ps1 dub 300 dub-echo <port>`: ganze Runde im Spiel mit Test-Pack „Voicigame Dub [Test]“ (Kopie, zwei Zeilen mit zwei Figuren); zweites Handy separat starten
+- `tools/run_test.ps1 -Plan dub -Seconds 660 -Phone dub-echo -Port <port>`: zwei Runden im Spiel mit Test-Pack „Voicigame Dub [Test]“ (Kopie, zwei Zeilen mit zwei Figuren), prüft die Review-Befunde (`PRÜFUNG`-Zeilen). Umgebung: `CLAIM`, `ROUNDS=2`, `WATCH_EARLY=1`; zweites Handy separat (`spaet`, Guy A und Guy B)
 - `tools/run_test.ps1 dubshot`: nur Fotos vom Dub-Modus des Spiels

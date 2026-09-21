@@ -284,4 +284,6 @@ window.VG_LANG.tr = { strings: {
   'Du schaust dieser Runde zu.': 'Bu turu izliyorsun.',
   'Der PC hat die Runde beendet.': 'PC turu bitirdi.',
   'Das Video ist für den Export zu lang.': 'Video dışa aktarmak için çok uzun.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC\'deki oyun son kayıtları hâlâ ekliyor. Birazdan başlıyor.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC\'deki oyun son repliği henüz bitirmedi.',
 } };

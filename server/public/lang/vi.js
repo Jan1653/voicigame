@@ -284,4 +284,6 @@ window.VG_LANG.vi = { strings: {
   'Du schaust dieser Runde zu.': 'Bạn đang xem vòng này.',
   'Der PC hat die Runde beendet.': 'PC đã kết thúc vòng chơi.',
   'Das Video ist für den Export zu lang.': 'Video quá dài để xuất.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Trò chơi trên PC vẫn đang đưa các bản ghi cuối vào. Sắp bắt đầu rồi.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Trò chơi trên PC chưa xong câu thoại cuối cùng.',
 } };

@@ -988,6 +988,7 @@
         const lines = c.lines === 1 ? t('1 Zeile') : t(`${c.lines} Zeilen`);
         b.append(node('strong', null, c.name), node('span', null, mine ? t(`Deine Figur, ${lines}`) : taken ? pname(c.claimedBy) : t(`${lines}, frei`)));
         b.dataset.claim = c.name;
+        b.dataset.on = String(!mine);   // gewünschter Zustand: doppelt getippt bleibt es dabei
         grid.append(b);
       }
       card.append(grid);
@@ -1326,10 +1327,11 @@
     const box = $id('extra');
     const lead = isLeader();
     const pause = d.pause;
-    if (same(box, JSON.stringify(['e', lead, pause && Math.ceil((pause.until - serverNow()) / 1000), !!d.turn]))) return;
+    const clipNow = d.turn?.clipId || '';
+    if (same(box, JSON.stringify(['e', lead, pause && Math.ceil((pause.until - serverNow()) / 1000), clipNow, D.skipSent === clipNow]))) return;
     let html = `<button type="button" class="cv-pill" data-act="options">${t('Optionen')}</button><p class="dub-status grow" data-f="st"></p>`;
     if (lead) {
-      if (pause || d.turn) html += `<button type="button" class="cv-pill" data-act="skip">${pause ? t('Überspringen') : t('Zeile überspringen')}</button>`;
+      if (pause || d.turn) html += `<button type="button" class="cv-pill" data-act="skip" ${D.skipSent === clipNow ? 'disabled' : ''}>${pause ? t('Überspringen') : t('Zeile überspringen')}</button>`;
       html += `<button type="button" class="cv-pill" data-act="hub">${t('Zur Lobby')}</button>`;
     }
     box.innerHTML = html;
@@ -1469,14 +1471,16 @@
     const box = $id('remote');
     const lead = isLeader();
     const watching = !!D.watch;
-    if (same(box, JSON.stringify(['rr', lead, watching, D.expanded]))) return;
+    const wait = !!d.waitGame;
+    if (same(box, JSON.stringify(['rr', lead, watching, D.expanded, wait]))) return;
     let html = `<h3>${t('Fertig!')}</h3><div class="dub-btns">`;
-    if (lead) html += watching ? btn('watch-stop', `<span class="sq"></span>${t('Anschauen beenden')}`, true, 'wide') : btn('watch', t('Gemeinsam anschauen'), true, 'wide');
+    if (lead) html += watching ? btn('watch-stop', `<span class="sq"></span>${t('Anschauen beenden')}`, true, 'wide') : btn('watch', t('Gemeinsam anschauen'), !wait, 'wide');
     else html += watching ? btn('watch-stop', `<span class="sq"></span>${t('Stopp')}`, true, 'wide') : '';
     html += watching ? '' : btn('watch-local', t('Nur hier anschauen'), true, 'wide');
     html += btn('expand', D.expanded ? t('Verkleinern') : t('Vergrößern'), true, 'wide');
     html += '</div>';
-    if (!lead && !watching) html += `<p class="dub-who small">${t('Die Spielleitung startet das gemeinsame Anschauen.')}</p>`;
+    if (wait && !watching) html += `<p class="dub-who small">${t('Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.')}</p>`;
+    else if (!lead && !watching) html += `<p class="dub-who small">${t('Die Spielleitung startet das gemeinsame Anschauen.')}</p>`;
     box.innerHTML = html;
   }
 
@@ -1545,7 +1549,7 @@
   async function onClick(e) {
     const b = e.target.closest('[data-act], [data-claim]');
     if (!b || b.disabled) return;
-    if (b.dataset.claim) return wsSend({ type: 'dub.claim', character: b.dataset.claim });
+    if (b.dataset.claim) return wsSend({ type: 'dub.claim', character: b.dataset.claim, on: b.dataset.on === 'true' });
     const d = dv();
     const clip = currentClip();
     switch (b.dataset.act) {
@@ -1587,7 +1591,14 @@
         return;
       }
       case 'next': return clip && sendTake(clip);
-      case 'skip': return wsSend({ type: 'dub.skip' });
+      case 'skip': {
+        // Nur diese Zeile überspringen, auch wenn doppelt getippt
+        const clipId = d?.turn?.clipId;
+        if (!clipId || D.skipSent === clipId) return;
+        D.skipSent = clipId;
+        wsSend({ type: 'dub.skip', clipId });
+        return renderExtra(d);
+      }
       case 'hub': return wsSend({ type: 'dub.hub' });
       case 'options': return openOptions();
       case 'options-close':

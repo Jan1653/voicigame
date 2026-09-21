@@ -13,13 +13,25 @@ extends Node
 
 const WavUtil = preload("wav_util.gd")
 const I18n = preload("i18n.gd")
+const Players = preload("players.gd")
 const LOCAL_ID := "local-1"
-const CHUNK := 8 * 1024 * 1024
+const CHUNK := 2 * 1024 * 1024      # Pack in Stücken: klein genug für langsame Leitungen (2 MB in 120 s = 0,14 Mbit/s)
+const UPLOAD_TRIES := 6             # so oft wird ein Stück nochmal versucht, mit wachsender Pause
+const TAKE_TRIES := 4               # so oft wird eine Handy-Aufnahme geladen, danach gilt sie als fehlend
+const ROUND_MARK := "voicigame_runde.txt"   # kennzeichnet Zwischenstände einer Voicigame-Runde
+const PARK_SUFFIX := " (vor Voicigame)"
 const BUTTON_SCENE := "res://scene/module/button/button_cv.tscn"
 const FONT_BOLD := "res://graphic/font/Waukegan LDO Extended Bold.ttf"
 const FONT_TEXT := "res://graphic/font/DuruSans-Regular.ttf"
 
 signal pack_uploaded
+signal scene_left                   # Dub-Szene wurde verlassen (Runde vorbei oder abgebrochen)
+
+# Nur für Tests (tools/test_dub.gd): Fehler absichtlich auslösen
+static var test_fail_uploads := 0   # so viele Pack-Stücke scheitern lassen
+static var test_broken_take := ""   # Aufnahmen dieser Zeile lassen sich nie laden
+var test_export_fail := false       # erster Video-Download geht schief
+var test_local_delay_ms := 0        # Test-Aufnahme für den PC erst so spät einspielen
 
 var bridge: Node
 var dm: Node                     # Dub-Szene des Spiels
@@ -34,7 +46,12 @@ var _up_index := 0
 var _up_offset := 0
 var _up_total := 0
 var _up_done := 0
-var _upload_state := ""          # "" | uploading | commit | done | error
+var _upload_state := ""          # "" | wait_hub | uploading | commit | done | error
+var _up_began := false
+var _up_tries := 0
+var _up_note := ""
+var _waiting_hub := false
+var _hub_asked_at := 0
 var _http: HTTPRequest
 var _jobs: Array = []
 var _job = null
@@ -53,6 +70,18 @@ var _skipped := {}               # Index -> true
 var _finished := false
 var _scores_sent := false
 var _test_local = null           # nur Tests: statt Mikro diese Aufnahme für den PC-Spieler
+var _local_pending := {}         # Index -> {bytes, clip, sending, next_at}: PC-Aufnahmen, die der Server noch nicht hat
+var _take_fail := {}             # Aufnahme -> Anzahl Fehlschläge beim Laden
+var _take_retry_at := {}         # Aufnahme -> frühester neuer Versuch (ms)
+var _blocked_game := false       # Knöpfe des Spiels sind vom Mod gesperrt
+var _ready_since := 0            # seit wann die PC-Zeile bereit ist (ms, nur Tests)
+var _mic_volume = null           # Lautstärke des Spiel-Mikrofons während einer Einspielung
+var _inj_player: AudioStreamPlayer   # spielt die Handy-Aufnahme in den Kanal des Mikrofons
+var _inject_start := Callable()
+var _skip_sent := ""             # für diese Zeile wurde schon „überspringen“ geschickt
+var _done_sent := false
+var _watch_after_finish := false
+var _leaving := false
 
 # Uhr (für gemeinsames Anschauen)
 var _offset_ms := 0.0
@@ -123,11 +152,14 @@ func attach(dub_node: Node, b: Node, plays: bool) -> void:
 		local.append({"slot": 1, "name": _pc_name()})
 	bridge._send({"type": "local.set", "players": local})
 	_sync_clock()
-	_start_upload()
+	_prepare_round()
 	_refresh()
 
 
 func _pc_name() -> String:
+	var own := Players.saved_name()
+	if own != "":
+		return own
 	var m = get_node_or_null("/root/M")
 	var cfg = m.get("config") if m else null
 	if cfg and cfg.get("player") is Dictionary:
@@ -164,6 +196,22 @@ func _pack_dir() -> String:
 	return str(res.pack_info.global_folder_path)
 
 
+## Vorige Runde im selben Raum (Ergebnis oder abgebrochen): erst zurück in die Lobby,
+## sonst lehnt der Server ein neues oder dasselbe Pack ab.
+func _prepare_round() -> void:
+	if str(_dub().get("phase", "")) in ["playing", "paused", "results"]:
+		_ask_hub()
+		return
+	_start_upload()
+
+
+func _ask_hub() -> void:
+	_waiting_hub = true
+	_upload_state = "wait_hub"
+	_hub_asked_at = Time.get_ticks_msec()
+	bridge._send({"type": "dub.hub"})
+
+
 func _start_upload() -> void:
 	var dir := _pack_dir()
 	_files.clear()
@@ -185,20 +233,22 @@ func _start_upload() -> void:
 		return
 	bridge.set_meta("dub_pack_key", key)
 	_upload_state = "uploading"
+	_up_began = false
 	_up_index = 0
 	_up_offset = 0
 	_up_done = 0
-	_http_job(HTTPClient.METHOD_POST, "/api/rooms/%s/dub/pack/begin" % bridge.room_code, [], PackedByteArray(), _on_begin_done)
+	_up_tries = 0
+	_up_note = ""
+	_upload_step()
 
 
-func _on_begin_done(code: int, body: PackedByteArray) -> void:
-	if code != 200:
-		_upload_failed(code, body)
+## Nächster Schritt beim Hochladen: beginnen, ein Stück schicken oder übernehmen.
+func _upload_step() -> void:
+	if _leaving or not is_instance_valid(dm) or _upload_state != "uploading":
 		return
-	_upload_next()
-
-
-func _upload_next() -> void:
+	if not _up_began:
+		_http_job(HTTPClient.METHOD_POST, "/api/rooms/%s/dub/pack/begin" % bridge.room_code, [], PackedByteArray(), _on_upload_reply.bind(0))
+		return
 	if _up_index >= _files.size():
 		_upload_state = "commit"
 		_commit(false)
@@ -210,21 +260,55 @@ func _upload_next() -> void:
 		fa.seek(_up_offset)
 		chunk = fa.get_buffer(mini(CHUNK, int(f["size"]) - _up_offset))
 		fa.close()
-	var url := "/api/rooms/%s/dub/pack/file?name=%s&offset=%d" % [bridge.room_code, str(f.name).uri_encode(), _up_offset]
-	_http_job(HTTPClient.METHOD_PUT, url, ["Content-Type: application/octet-stream"], chunk, _on_chunk_done.bind(chunk.size(), int(f["size"])))
+	var offset := _up_offset
+	if test_fail_uploads > 0:
+		test_fail_uploads -= 1
+		offset += 1   # nur Tests: falscher Versatz, der Server lehnt ab
+	var url := "/api/rooms/%s/dub/pack/file?name=%s&offset=%d" % [bridge.room_code, str(f.name).uri_encode(), offset]
+	_http_job(HTTPClient.METHOD_PUT, url, ["Content-Type: application/octet-stream"], chunk, _on_upload_reply.bind(chunk.size()))
 
 
-func _on_chunk_done(code: int, body: PackedByteArray, sent: int, file_size: int) -> void:
+func _on_upload_reply(code: int, body: PackedByteArray, sent: int) -> void:
+	if _upload_state != "uploading":
+		return
 	if code != 200:
+		_upload_retry(code, body)
+		return
+	_up_tries = 0
+	_up_note = ""
+	if not _up_began:
+		_up_began = true
+	else:
+		_up_offset += sent
+		_up_done += sent
+		if _up_offset >= int(_files[_up_index]["size"]):
+			_up_index += 1
+			_up_offset = 0
+	_refresh()
+	_upload_step()
+
+
+## Stück ging schief: kurz warten und nochmal, ab dem Stand, den der Server schon hat.
+func _upload_retry(code: int, body: PackedByteArray) -> void:
+	var j = JSON.parse_string(body.get_string_from_utf8())
+	var err := str(j.get("error", "")) if j is Dictionary else ""
+	if code == 409 and err.begins_with("Das Pack kann nur in der Lobby"):
+		_ask_hub()   # vorige Runde läuft noch
+		return
+	if code == 409 and err == "bad_offset" and j.has("have") and _up_began and _up_index < _files.size():
+		# Server hat schon mehr oder weniger: genau dort weitermachen
+		var have := clampi(int(j.have), 0, int(_files[_up_index]["size"]))
+		_up_done += have - _up_offset
+		_up_offset = have
+	_up_tries += 1
+	if code in [403, 404, 413, 507] or _up_tries > UPLOAD_TRIES:
 		_upload_failed(code, body)
 		return
-	_up_offset += sent
-	_up_done += sent
-	if _up_offset >= file_size:
-		_up_index += 1
-		_up_offset = 0
+	var wait := minf(30.0, 2.0 * pow(2.0, _up_tries - 1))
+	_up_note = _t("Verbindung unterbrochen, neuer Versuch in {} s …", [int(wait)])
+	push_warning("Voicigame: Pack-Stück nicht angenommen (%d %s), Versuch %d" % [code, err, _up_tries])
 	_refresh()
-	_upload_next()
+	get_tree().create_timer(wait).timeout.connect(_upload_step)
 
 
 func _commit(reuse: bool) -> void:
@@ -246,7 +330,8 @@ func _on_commit_done(code: int, resp: PackedByteArray, reuse: bool) -> void:
 			bridge.remove_meta("dub_pack_key")
 			_start_upload()
 			return
-		_upload_failed(code, resp)
+		_upload_state = "uploading"   # Übernehmen nochmal versuchen
+		_upload_retry(code, resp)
 		return
 	_upload_state = "done"
 	pack_uploaded.emit()
@@ -260,8 +345,28 @@ func _upload_failed(code: int, body: PackedByteArray) -> void:
 	if j is Dictionary and j.has("error"):
 		msg = str(j.error)
 	push_warning("Voicigame: Pack-Upload fehlgeschlagen (%d): %s" % [code, msg])
-	_hub_upload.text = _t("Hochladen fehlgeschlagen: {}", [_t(msg)])
+	_up_note = ""
+	_hub_upload.text = _t("Hochladen fehlgeschlagen: {}", [upload_error_text(code, msg)])
 	bridge.remove_meta("dub_pack_key")
+
+
+## Fehler vom Server als lesbarer Satz (statt Kürzeln wie too_large).
+static func upload_error_text(code: int, err: String) -> String:
+	if code == 0:
+		return _t("Keine Verbindung zum Server.")
+	match err:
+		"too_large":
+			return _t("Das Pack ist zu groß für den Server.")
+		"storage_full":
+			return _t("Der Server ist gerade voll. Versuch es später nochmal.")
+		"forbidden", "not_allowed", "room_not_found", "no_dub":
+			return _t("Der Raum ist nicht mehr erreichbar.")
+		"bad_offset", "not_started", "aborted":
+			return _t("Die Übertragung wurde unterbrochen.")
+	# Sätze vom Server sind deutsch und übersetzbar, alles andere als Nummer
+	if err.contains(" "):
+		return _t(err)
+	return _t("Der Server hat das Pack abgelehnt (Fehler {}).", [code])
 
 
 # ------------------------------------------------------------------
@@ -345,18 +450,30 @@ func _download_take(clip_id: String, pid: String, _v) -> void:
 	var k := _take_key(clip_id, pid)
 	if _takes.has(k) or _loading.has(k) or pid.begins_with("local-"):
 		return
+	if Time.get_ticks_msec() < int(_take_retry_at.get(k, 0)):
+		return
 	_loading[k] = true
 	var url := "/api/rooms/%s/dub/takes/%s/%s" % [bridge.room_code, clip_id.uri_encode(), pid.uri_encode()]
+	if test_broken_take != "" and clip_id == test_broken_take:
+		url += "-kaputt"   # nur Tests: diese Aufnahme gibt es nicht
 	_http_job(HTTPClient.METHOD_GET, url, [], PackedByteArray(), _on_take_loaded.bind(k), true)
 
 
+## Geladen: lesbar -> merken. Sonst später nochmal, nach TAKE_TRIES Versuchen gilt sie als fehlend (null).
 func _on_take_loaded(code: int, body: PackedByteArray, k: String) -> void:
 	_loading.erase(k)
-	if code != 200:
-		return
-	var s := WavUtil.from_wav_bytes(body)
+	var s: AudioStreamWAV = WavUtil.from_wav_bytes(body) if code == 200 else null
 	if s:
 		_takes[k] = s
+		_take_fail.erase(k)
+		return
+	var n := int(_take_fail.get(k, 0)) + 1
+	_take_fail[k] = n
+	push_warning("Voicigame: Handy-Aufnahme %s nicht geladen (%d), Versuch %d" % [k, code, n])
+	if n >= TAKE_TRIES:
+		_takes[k] = null
+	else:
+		_take_retry_at[k] = Time.get_ticks_msec() + 1500 * n
 
 
 func _fetch_known_takes() -> void:
@@ -376,34 +493,47 @@ func start_round(force := false) -> void:
 ## (Das Spiel legt Zwischenstände je Pack ab und würde sie sonst überschreiben.)
 func _park_solo_session() -> void:
 	var temp: String = dm.resource.get_temp_preserve_path().trim_suffix("/")
-	if not DirAccess.dir_exists_absolute(temp) or bridge.has_meta("dub_parked"):
-		return
-	var parked := temp + " (vor Voicigame)"
-	if DirAccess.dir_exists_absolute(parked):
-		return   # schon beiseitegelegt, nichts überschreiben
-	if DirAccess.rename_absolute(temp, parked) == OK:
-		bridge.set_meta("dub_parked", [temp, parked])
+	if DirAccess.dir_exists_absolute(temp) and not bridge.has_meta("dub_parked"):
+		if FileAccess.file_exists(temp + "/" + ROUND_MARK):
+			OS.move_to_trash(ProjectSettings.globalize_path(temp))   # Rest einer früheren Runde, keine Solo-Sitzung
+		elif not DirAccess.dir_exists_absolute(temp + PARK_SUFFIX):   # schon beiseitegelegt: nichts überschreiben
+			if DirAccess.rename_absolute(temp, temp + PARK_SUFFIX) == OK:
+				bridge.set_meta("dub_parked", [temp, temp + PARK_SUFFIX])
+	# Ordner dieser Runde kennzeichnen: nach einem Absturz ist er so von einer Solo-Sitzung zu unterscheiden
+	if not DirAccess.dir_exists_absolute(temp):
+		DirAccess.make_dir_recursive_absolute(temp)
+	var f := FileAccess.open(temp + "/" + ROUND_MARK, FileAccess.WRITE)
+	if f:
+		f.store_string("Zwischenstände einer Voicigame-Runde, werden danach weggeräumt.\n")
+		f.close()
+	bridge.set_meta("dub_round_temp", temp)
 
 
-## Nach einem Absturz: beiseitegelegte Solo-Sitzungen zurückholen (wird beim Start des Mods aufgerufen).
+## Beim Start des Mods (nach einem Absturz): Reste von Runden in den Papierkorb, Solo-Sitzungen zurückholen.
 static func restore_parked() -> void:
 	var root := "user://game/.temp/dub_mode/"
 	if not DirAccess.dir_exists_absolute(root):
 		return
 	for dir in DirAccess.get_directories_at(root):
-		if dir.ends_with(" (vor Voicigame)"):
-			var orig := dir.trim_suffix(" (vor Voicigame)")
+		if not dir.ends_with(PARK_SUFFIX) and FileAccess.file_exists(root + dir + "/" + ROUND_MARK):
+			OS.move_to_trash(ProjectSettings.globalize_path(root + dir))
+	for dir in DirAccess.get_directories_at(root):
+		if dir.ends_with(PARK_SUFFIX):
+			var orig := dir.trim_suffix(PARK_SUFFIX)
 			if not DirAccess.dir_exists_absolute(root + orig):
 				DirAccess.rename_absolute(root + dir, root + orig)
 
 
 func _restore_solo_session() -> void:
+	if bridge.has_meta("dub_round_temp"):
+		var temp: String = bridge.get_meta("dub_round_temp")
+		if DirAccess.dir_exists_absolute(temp) and FileAccess.file_exists(temp + "/" + ROUND_MARK):
+			OS.move_to_trash(ProjectSettings.globalize_path(temp))
+		bridge.remove_meta("dub_round_temp")
 	if not bridge.has_meta("dub_parked"):
 		return
 	var p: Array = bridge.get_meta("dub_parked")
-	if DirAccess.dir_exists_absolute(p[0]):
-		OS.move_to_trash(ProjectSettings.globalize_path(p[0]))
-	if DirAccess.rename_absolute(p[1], p[0]) == OK:
+	if not DirAccess.dir_exists_absolute(p[0]) and DirAccess.rename_absolute(p[1], p[0]) == OK:
 		bridge.remove_meta("dub_parked")
 
 
@@ -418,14 +548,23 @@ func _begin() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not is_instance_valid(dm):
+	if not is_instance_valid(dm) or _leaving:
 		return
 	var d := _dub()
+	var phase := str(d.get("phase", ""))
+	if _waiting_hub:
+		if phase == "hub":
+			_waiting_hub = false
+			_start_upload()
+		elif Time.get_ticks_msec() - _hub_asked_at > 5000:
+			_ask_hub()
+		return
 	if not _started:
-		if str(d.get("phase", "")) in ["playing", "paused"] and _upload_state == "done":
+		if phase in ["playing", "paused"] and _upload_state == "done":
 			_begin()
 		return
 	_fetch_known_takes()
+	_send_local_takes()
 	if _busy:
 		return
 	var i: int = dm.clip_index
@@ -433,9 +572,19 @@ func _process(_delta: float) -> void:
 		_on_game_clip_changed(_game_index)
 		_game_index = i
 		_engage_ref = _idle_count
+		_ready_since = 0
 	if dm.performing_finished:
 		_after_finish()
 		return
+	# Spielleitung ist mitten in der Runde zurück in die Lobby: anhalten, bis neu gestartet wird
+	if phase == "hub":
+		if not _hub.visible:
+			_hub.show()
+			_refresh()
+		_block(true, _t("Die Spielleitung ist zurück in der Lobby. Es geht weiter, sobald neu gestartet wird."))
+		return
+	if _hub.visible:
+		_hub.hide()
 	if i < 0 or i >= order.size():
 		return
 	var turn := _turn_for(order[i])
@@ -446,11 +595,15 @@ func _process(_delta: float) -> void:
 	var web := recs.filter(func(p): return not str(p).begins_with("local-"))
 	var local := recs.has(LOCAL_ID)
 	if local:
+		_unblock_game()
 		_block(false, _banner_local(web))
-		if _test_local and _idle_count > _engage_ref:
-			var s = _test_local.call(i)
-			if s:
-				_run_inject(s, true)
+		if _test_local and _idle_count > _engage_ref and not _blocked_game:
+			if _ready_since == 0:
+				_ready_since = Time.get_ticks_msec()
+			if Time.get_ticks_msec() - _ready_since >= test_local_delay_ms:
+				var s = _test_local.call(i)
+				if s:
+					_run_inject(s, true)
 		return
 	# Nur Web-Spieler sprechen diese Zeile
 	var names := ", ".join(web.map(func(p): return _player_name(str(p))))
@@ -472,10 +625,11 @@ func _process(_delta: float) -> void:
 				_download_take(order[i], str(p), 0)
 				_block(true, _t("Aufnahme von {} wird geladen …", [names]))
 				return
-			takes.append(_takes[k])
+			if _takes[k] != null:   # null: ließ sich nicht laden, zählt als fehlend
+				takes.append(_takes[k])
 	_block(true, _t("Aufnahme von {}", [names]))
 	if takes.is_empty():
-		_skipped[i] = true
+		_skipped[i] = true   # am Ende wie im Steam-Mod mit dem Original-Ton
 	_run_inject(_mix_to_clip(takes, i), true)
 
 
@@ -496,8 +650,11 @@ func _has_take_on_server(clip_id: String, pid: String) -> bool:
 ## Hat der Server die Zeile abgeschlossen (alle Aufnahmen da oder übersprungen)?
 func _line_done_on_server(clip_id: String) -> bool:
 	var d := _dub()
-	if str(d.get("phase", "")) == "results":
+	var phase := str(d.get("phase", ""))
+	if phase == "results":
 		return true
+	if phase not in ["playing", "paused"]:
+		return false   # z. B. zurück in der Lobby: nichts gilt als fertig
 	var turns: Array = d.get("turns", [])
 	var cur = d.get("turn")
 	var cur_index := int(cur.get("index", -1)) if cur is Dictionary else turns.size()
@@ -526,15 +683,44 @@ func _on_game_clip_changed(prev: int) -> void:
 	var inst = dm.performance_array[prev]
 	var audio = inst.member_audio
 	if audio is AudioStreamWAV:
-		var url := "/api/rooms/%s/dub/takes/%s?player=%s" % [bridge.room_code, order[prev].uri_encode(), LOCAL_ID]
-		_http_job(HTTPClient.METHOD_POST, url, ["Content-Type: audio/wav"], _wav_bytes(audio), _on_local_sent, true)
+		# Vormerken: der Server nimmt sie erst, wenn er bei dieser Zeile ist (Web-Spieler können noch dran sein)
+		_local_pending[prev] = {"bytes": _wav_bytes(audio), "clip": order[prev], "sending": false, "next_at": 0}
 	if recs.size() > 1:
 		_mix_later[prev] = true
 
 
-func _on_local_sent(code: int, body: PackedByteArray) -> void:
-	if code != 200:
-		push_warning("Voicigame: PC-Aufnahme nicht angenommen (%d): %s" % [code, body.get_string_from_utf8()])
+## Vorgemerkte PC-Aufnahmen schicken, sobald der Server bei ihrer Zeile ist. Fehler: später nochmal.
+func _send_local_takes() -> void:
+	if _local_pending.is_empty():
+		return
+	var cur = _dub().get("turn")
+	var cur_clip := str(cur.get("clipId", "")) if cur is Dictionary else ""
+	for i in _local_pending.keys():
+		var p: Dictionary = _local_pending[i]
+		if p.sending or Time.get_ticks_msec() < int(p.next_at):
+			continue
+		if _line_done_on_server(p.clip) and str(_dub().get("phase", "")) != "results":
+			_local_pending.erase(i)   # Server ist schon weiter (z. B. übersprungen)
+			continue
+		if p.clip != cur_clip:
+			continue
+		p.sending = true
+		var url := "/api/rooms/%s/dub/takes/%s?player=%s" % [bridge.room_code, str(p.clip).uri_encode(), LOCAL_ID]
+		_http_job(HTTPClient.METHOD_POST, url, ["Content-Type: audio/wav"], p.bytes, _on_local_sent.bind(i), true)
+
+
+func _on_local_sent(code: int, body: PackedByteArray, i: int) -> void:
+	var p = _local_pending.get(i)
+	if p == null:
+		return
+	p.sending = false
+	if code == 200:
+		_local_pending.erase(i)
+		print("Voicigame | PC-Aufnahme für Zeile %d angenommen" % (i + 1))
+		return
+	# 409: Server ist noch bei einer anderen Zeile; 0 oder 5xx: Netz, gleich nochmal
+	p.next_at = Time.get_ticks_msec() + (500 if code == 409 else 2000)
+	push_warning("Voicigame: PC-Aufnahme für Zeile %d noch nicht angenommen (%d): %s" % [i + 1, code, body.get_string_from_utf8().left(120)])
 
 
 ## Web-Aufnahmen, die zu einer PC-Zeile gehören, in die Aufnahme des Spiels mischen (sobald sie da sind).
@@ -555,7 +741,8 @@ func _apply_mix_later() -> void:
 					all = false
 					_download_take(order[i], str(p), 0)
 					break
-				add.append(_takes[k])
+				if _takes[k] != null:
+					add.append(_takes[k])
 		if not all:
 			continue
 		_mix_later.erase(i)
@@ -569,8 +756,10 @@ func _apply_mix_later() -> void:
 # Web-Aufnahme durch die Aufnahme des Spiels schicken
 # ------------------------------------------------------------------
 
-## Wie im Spiel: Clip läuft, 0,125 s später beginnt die Aufnahme. Genau dann läuft statt des Mikrofons
-## die Handy-Aufnahme in den Kanal „Plmic“. Wellenform, Wertung und Speichern macht das Spiel selbst.
+## Wie im Spiel: Clip läuft, 0,125 s später beginnt die Aufnahme. Genau dann läuft die Handy-Aufnahme
+## in den Kanal des Mikrofons. Wellenform, Wertung und Speichern macht das Spiel selbst.
+## Das Mikrofon des Spiels läuft dabei weiter und ist nur stumm: Es zu stoppen und neu zu starten
+## kann den Windows-Audiotreiber (WASAPI) aufhängen.
 func _run_inject(stream: AudioStream, then_next: bool) -> void:
 	_busy = true
 	var ms = get_node_or_null("/root/MicrophoneService")
@@ -578,19 +767,22 @@ func _run_inject(stream: AudioStream, then_next: bool) -> void:
 		_busy = false
 		return
 	var player: AudioStreamPlayer = ms.player
-	var mic_stream = player.stream
-	var on_start := func():
-		player.stream = stream
-		player.play(0.0)
-	ms.recording_started.connect(on_start, CONNECT_ONE_SHOT)
+	if not is_instance_valid(_inj_player):
+		_inj_player = AudioStreamPlayer.new()
+		_inj_player.name = "VoicigameWebTake"
+		player.add_sibling(_inj_player)   # gleiche Pause-Regeln wie das Mikrofon
+	_inj_player.bus = player.bus
+	_inj_player.stream = stream
+	_inject_start = func():
+		if _mic_volume == null:
+			_mic_volume = player.volume_db
+		player.volume_db = -80.0
+		_inj_player.play(0.0)
+	ms.recording_started.connect(_inject_start, CONNECT_ONE_SHOT)
 	var aim = dm.audio_interface_manager
 	dm._enact()
 	await aim.idled
-	if ms.recording_started.is_connected(on_start):
-		ms.recording_started.disconnect(on_start)
-	player.stop()
-	player.stream = mic_stream
-	player.play()
+	_restore_mic()
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if then_next and is_instance_valid(dm) and not dm.performing_finished:
@@ -602,6 +794,21 @@ func _run_inject(stream: AudioStream, then_next: bool) -> void:
 			await get_tree().process_frame
 			waited += get_process_delta_time()
 	_busy = false
+
+
+## Mikrofon des Spiels wieder hörbar machen (nach einer Einspielung, auch wenn die Szene mittendrin verlassen wird).
+func _restore_mic() -> void:
+	if is_instance_valid(_inj_player):
+		_inj_player.stop()
+	var ms = get_node_or_null("/root/MicrophoneService")
+	if ms == null:
+		return
+	if _inject_start.is_valid() and ms.recording_started.is_connected(_inject_start):
+		ms.recording_started.disconnect(_inject_start)
+	_inject_start = Callable()
+	if _mic_volume != null:
+		ms.player.volume_db = _mic_volume
+	_mic_volume = null
 
 
 func _clip_frames(i: int, rate: int) -> int:
@@ -692,6 +899,13 @@ static func _wav_bytes(s: AudioStreamWAV) -> PackedByteArray:
 
 func _after_finish() -> void:
 	_apply_mix_later()
+	# Alles eingespielt und gemischt: Server darf „gemeinsam anschauen“ freigeben
+	if not _done_sent and _mix_later.is_empty():
+		_done_sent = true
+		bridge._send({"type": "dub.done"})
+		if _watch_after_finish:
+			_watch_after_finish = false
+			_watch_now()
 	if not _finished:
 		_finished = true
 		_block(false, _t("Fertig! „Watch“ startet das Video auf allen Geräten gleichzeitig."))
@@ -728,14 +942,26 @@ func request_watch() -> void:
 
 
 func _watch_now() -> void:
-	if is_instance_valid(dm):
-		_apply_mix_later()
-		dm.watch()
+	if not is_instance_valid(dm):
+		return
+	if not dm.performing_finished or _busy or not _mix_later.is_empty():
+		# Letzte Zeile wird noch eingespielt: danach abspielen (der Server wartet normalerweise darauf)
+		_watch_after_finish = true
+		print("Voicigame | Anschauen erst nach der letzten Zeile")
+		return
+	_apply_mix_later()
+	dm.watch()
 
 
 func request_export() -> void:
+	var ex = _dub().get("export")
+	var ready := ex is Dictionary and str(ex.get("status", "")) == "done"
 	_export_state = ""
-	bridge._send({"type": "dub.export"})
+	if not ready:
+		bridge._send({"type": "dub.export"})
+	else:
+		_check_export()   # Video liegt schon bereit: nur neu herunterladen
+	_refresh()
 
 
 func _check_export() -> void:
@@ -747,26 +973,74 @@ func _check_export() -> void:
 	_export_file = export_dir + str(ex.get("name", "dub.mp4")).validate_filename()
 	_export_http = HTTPRequest.new()
 	_export_http.timeout = 600.0
-	_export_http.download_file = _export_file
+	# Erst unter anderem Namen: eine Fehlerseite oder ein abgebrochener Download wird nie zur .mp4
+	_export_http.download_file = _export_file + ".part"
 	add_child(_export_http)
 	_export_http.request_completed.connect(_on_export_loaded)
-	_export_http.request(bridge.server_url + "/api/rooms/%s/dub/export.mp4?dl=0" % bridge.room_code, ["X-Host-Key: " + bridge.host_key])
+	var url: String = str(bridge.server_url) + "/api/rooms/%s/dub/export.mp4?dl=0" % bridge.room_code
+	if test_export_fail:
+		test_export_fail = false
+		url = url.replace("export.mp4", "export-kaputt.mp4")   # nur Tests
+	_export_http.request(url, ["X-Host-Key: " + bridge.host_key])
 
 
-func _on_export_loaded(_r: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
-	_export_state = "done" if code == 200 else "error"
-	if code == 200:
+func _on_export_loaded(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
+	var part := _export_file + ".part"
+	if result == HTTPRequest.RESULT_SUCCESS and code == 200 and FileAccess.file_exists(part):
+		if FileAccess.file_exists(_export_file):
+			OS.move_to_trash(ProjectSettings.globalize_path(_export_file))   # gleiches Video nochmal geladen
+		_export_state = "done" if DirAccess.rename_absolute(part, _export_file) == OK else "error"
+	else:
+		_export_state = "error"
+		push_warning("Voicigame: Video-Download fehlgeschlagen (%d, %d)" % [result, code])
+	_trash_part()
+	if _export_state == "done":
 		print("Voicigame | Video gespeichert: %s" % _export_file)
 	_export_http.queue_free()
 	_refresh()
 
 
+func _trash_part() -> void:
+	var part := _export_file + ".part"
+	if _export_file != "" and FileAccess.file_exists(part):
+		OS.move_to_trash(ProjectSettings.globalize_path(part))
+
+
 func _on_scene_left() -> void:
+	_leaving = true
 	_watch_timer.stop()
+	_restore_mic()
+	if is_instance_valid(_inj_player):
+		_inj_player.queue_free()   # hängt am Mikrofon-Dienst des Spiels, nicht an diesem Knoten
 	_restore_solo_session()
+	if _export_state == "loading" and is_instance_valid(_export_http):
+		_export_http.cancel_request()
+		_trash_part()
 	if is_instance_valid(_layer):
 		_layer.queue_free()
+	scene_left.emit()
+	_finish_leaving()
+
+
+## Nach dem Verlassen: PC-Aufnahmen, die der Server gerade annehmen kann, noch schicken (höchstens 15 s).
+## Wurde die Runde mittendrin verlassen, gehen alle zurück in die Lobby, sonst warten die Browser ewig auf den PC.
+func _finish_leaving() -> void:
+	var until := Time.get_ticks_msec() + 15000
+	while bridge.has_room() and Time.get_ticks_msec() < until and _can_still_send():
+		_send_local_takes()
+		await get_tree().create_timer(0.3).timeout
+	if bridge.has_room() and str(_dub().get("phase", "")) in ["playing", "paused"]:
+		bridge._send({"type": "dub.hub"})
 	queue_free()
+
+
+func _can_still_send() -> bool:
+	var cur = _dub().get("turn")
+	var cur_clip := str(cur.get("clipId", "")) if cur is Dictionary else ""
+	for p in _local_pending.values():
+		if p.sending or p.clip == cur_clip:
+			return true
+	return false
 
 
 # ------------------------------------------------------------------
@@ -964,6 +1238,7 @@ func _on_qr(_r: int, code: int, _h: PackedStringArray, body: PackedByteArray) ->
 ## Web-Zeile: Knöpfe des Spiels sperren und sagen, worauf gewartet wird.
 func _block(on: bool, text: String) -> void:
 	if on and is_instance_valid(dm) and not _busy:
+		_blocked_game = true
 		for b in [dm.btn_record, dm.btn_next, dm.btn_hear_again, dm.btn_refresh_mic]:
 			if b and b.enabled:
 				b.enable(false)
@@ -973,23 +1248,48 @@ func _block(on: bool, text: String) -> void:
 	_set_banner(text)
 
 
+## PC-Zeile nach einer Web-Zeile: das Spiel übernimmt die gesperrten Knöpfe in die nächste Zeile,
+## deshalb hier wieder so freigeben, wie das Spiel sie für eine neue Zeile setzt.
+func _unblock_game() -> void:
+	if not _blocked_game or _busy or not is_instance_valid(dm):
+		return
+	if _idle_count <= _engage_ref or int(dm.audio_interface_manager.state) != 0:
+		return   # Clip läuft noch zum ersten Mal, das Spiel gibt die Knöpfe danach selbst frei
+	_blocked_game = false
+	var attempts := int(dm.turn_record_attempts)
+	var profile = get_node_or_null("/root/Profile")
+	var one_take: bool = profile != null and bool(profile.get("dub_mode_hard_one_take"))
+	dm.btn_hear_again.enable(true)
+	dm.btn_refresh_mic.enable(true)
+	dm.btn_record.enable(not one_take or attempts == 0)
+	dm.btn_next.enable(attempts > 0)
+	var rs = dm.get("btn_replay_synced")
+	if rs:
+		rs.enable(attempts > 0)
+	print("Voicigame | Knöpfe am PC wieder frei (Zeile %d)" % (dm.clip_index + 1))
+
+
 func _set_banner(text: String) -> void:
 	if _banner_text.text != text:
 		_banner_text.text = text
-	_banner.visible = _started and text != ""
+	_banner.visible = _started and text != "" and not _hub.visible   # Lobby-Einblendung hat Vorrang
 	_refresh_banner_buttons()
 
 
 func _refresh_banner_buttons() -> void:
 	var d := _dub()
-	var sig := "%s|%s|%s|%s" % [_finished, str(d.get("export", {})), _export_state, str(d.get("phase", ""))]
+	var cur = d.get("turn")
+	var cur_clip := str(cur.get("clipId", "")) if cur is Dictionary else ""
+	var sig := "%s|%s|%s|%s|%s|%s" % [_finished, str(d.get("export", {})), _export_state, str(d.get("phase", "")), cur_clip, _skip_sent == cur_clip]
 	if sig == _last_sig:
 		return
 	_last_sig = sig
 	for c in _banner_btns.get_children():
 		c.queue_free()
 	if not _finished:
-		_banner_btns.add_child(_small_button(_t("Zeile überspringen"), func(): bridge._send({"type": "dub.skip"})))
+		var skip := _small_button(_t("Zeile überspringen"), _skip_line)
+		skip.disabled = cur_clip == "" or _skip_sent == cur_clip
+		_banner_btns.add_child(skip)
 		return
 	var ex = d.get("export")
 	var st := str(ex.get("status", "")) if ex is Dictionary else ""
@@ -997,6 +1297,8 @@ func _refresh_banner_buttons() -> void:
 		return
 	if _export_state == "done":
 		_banner_btns.add_child(_small_button(_t("Ordner öffnen"), func(): OS.shell_show_in_file_manager(_export_file)))
+	elif _export_state == "error":
+		_banner_btns.add_child(_small_button(_t("Nochmal versuchen"), request_export))
 	elif st == "queued" or st == "running" or _export_state == "loading":
 		pass
 	else:
@@ -1015,8 +1317,20 @@ func _leave_hub() -> void:
 		m.world.return_to_dub_selection()
 
 
-func _claim_local(character: String) -> void:
-	bridge._send({"type": "dub.claim", "character": character, "playerId": LOCAL_ID})
+## Nur die aktuelle Zeile überspringen, auch wenn doppelt geklickt.
+func _skip_line() -> void:
+	var cur = _dub().get("turn")
+	var clip := str(cur.get("clipId", "")) if cur is Dictionary else ""
+	if clip == "" or _skip_sent == clip:
+		return
+	_skip_sent = clip
+	bridge._send({"type": "dub.skip", "clipId": clip})
+	_refresh_banner_buttons()
+
+
+## on: nehmen oder freigeben. Doppelt geklickt schickt zweimal dasselbe, statt hin und her zu schalten.
+func _claim_local(character: String, on := true) -> void:
+	bridge._send({"type": "dub.claim", "character": character, "playerId": LOCAL_ID, "on": on})
 
 
 func _refresh() -> void:
@@ -1030,8 +1344,12 @@ func _refresh() -> void:
 	var video = d.get("video")
 	var vs := str(video.get("status", "")) if video is Dictionary else ""
 	match _upload_state:
+		"wait_hub":
+			_hub_upload.text = _t("Die vorige Runde wird beendet …")
 		"uploading":
 			_hub_upload.text = _t("Pack wird für die Browser hochgeladen: {} %", [int(100.0 * _up_done / maxf(1.0, _up_total))])
+			if _up_note != "":
+				_hub_upload.text += "\n" + _up_note
 		"commit":
 			_hub_upload.text = _t("Pack wird eingelesen …")
 		"done":
@@ -1088,7 +1406,7 @@ func _refresh() -> void:
 			row.add_child(l)
 			if host_plays and (owner == null or str(owner) == LOCAL_ID):
 				var cname := str(c.get("name", ""))
-				row.add_child(_small_button(_t("Freigeben") if owner else _t("Ich am PC"), _claim_local.bind(cname)))
+				row.add_child(_small_button(_t("Freigeben") if owner else _t("Ich am PC"), _claim_local.bind(cname, owner == null)))
 			_chars_box.add_child(row)
 	# Chat
 	for c in _chat_box.get_children():
@@ -1110,8 +1428,6 @@ func _refresh() -> void:
 		"no_players": _t("Es spielt noch niemand mit."),
 		"loading": _t("Noch nicht alle haben das Pack geladen."),
 	}.get(reason, "")
-	if str(d.get("phase", "")) == "hub" and _started and not _finished:
-		_set_banner(_t("Die Spielleitung ist zurück in der Lobby. Es geht weiter, sobald neu gestartet wird."))
 	_check_export()
 	if _finished:
 		var ex = d.get("export")

@@ -8,6 +8,7 @@ signal closed
 const UI = preload("ui.gd")
 const I18n = preload("i18n.gd")
 const JoinClient = preload("join_client.gd")
+const Players = preload("players.gd")
 const CONFIG := "user://voicigame.cfg"
 const COUNTDOWN := 3
 
@@ -132,13 +133,7 @@ func _show_entry(message: String) -> void:
 
 ## Name aus dem Spielerprofil des Spiels als Vorschlag.
 func _profile_name() -> String:
-	var profile = get_node_or_null("/root/Profile")
-	var pack := str(profile.get("contestant")) if profile else ""
-	if pack == "":
-		return ""
-	var path := "user://game/packs_player/%s/config_player.json" % pack
-	var data = JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
-	return str(data.get("name", pack)) if data is Dictionary else pack
+	return Players.profile_name(get_node_or_null("/root/Profile"))
 
 
 func join(code: String, name: String) -> void:

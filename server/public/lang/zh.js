@@ -284,4 +284,6 @@ window.VG_LANG.zh = { strings: {
   'Du schaust dieser Runde zu.': '你正在观看这一轮。',
   'Der PC hat die Runde beendet.': '电脑结束了这一轮。',
   'Das Video ist für den Export zu lang.': '视频太长，无法导出。',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC 上的游戏还在导入最后几段录音，马上开始。',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC 上的游戏还没处理完最后一句台词。',
 } };

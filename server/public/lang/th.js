@@ -284,4 +284,6 @@ window.VG_LANG.th = { strings: {
   'Du schaust dieser Runde zu.': 'คุณกำลังดูรอบนี้',
   'Der PC hat die Runde beendet.': 'พีซีจบรอบแล้ว',
   'Das Video ist für den Export zu lang.': 'วิดีโอยาวเกินไปสำหรับการส่งออก',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'เกมบน PC ยังใส่เสียงที่อัดไว้ชุดสุดท้ายอยู่ อีกเดี๋ยวจะเริ่ม',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'เกมบน PC ยังทำบทพูดสุดท้ายไม่เสร็จ',
 } };

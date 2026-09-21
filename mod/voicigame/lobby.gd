@@ -10,6 +10,7 @@ signal closed
 
 const UI = preload("ui.gd")
 const I18n = preload("i18n.gd")
+const Players = preload("players.gd")
 
 var bridge: Node
 var _bg: ColorRect
@@ -20,6 +21,7 @@ var _qr: TextureRect
 var _list: VBoxContainer
 var _status: Label
 var _host_plays: CheckBox
+var _name_edit: LineEdit
 var _qr_http: HTTPRequest
 
 
@@ -119,6 +121,17 @@ func _show_host() -> void:
 	_host_plays.button_pressed = true
 	_host_plays.add_theme_font_size_override("font_size", 18)
 	right.add_child(_host_plays)
+	# Eigener Name: so sehen die anderen den PC-Spieler (Punkte, „… ist dran“, Figuren im Dub-Modus)
+	var name_row := HBoxContainer.new()
+	name_row.add_theme_constant_override("separation", 12)
+	name_row.add_child(UI.label(tr_("Dein Name"), 18, false, UI.MUTED))
+	_name_edit = UI.line_edit(tr_("Dein Name"), 18, 260)
+	_name_edit.max_length = 24
+	var saved := Players.saved_name()
+	_name_edit.text = saved if saved != "" else Players.profile_name(get_node_or_null("/root/Profile"))
+	_name_edit.text_changed.connect(func(t): Players.save_name(t))
+	name_row.add_child(_name_edit)
+	right.add_child(name_row)
 	_status = UI.label("", 17, false, UI.WARN)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(_status)
@@ -193,6 +206,7 @@ func _on_error(_code: String, message: String) -> void:
 
 
 func _on_start() -> void:
+	_keep_name()
 	var web: Array = bridge.web_players()
 	if web.is_empty() and not _host_plays.button_pressed:
 		_status.text = tr_("Es spielt noch niemand mit.")
@@ -202,7 +216,14 @@ func _on_start() -> void:
 
 ## Dub-Modus: Pack im Spiel wählen, Web-Spieler sprechen ihre Figuren im Browser.
 func _on_dub() -> void:
+	_keep_name()
 	dub_requested.emit(_host_plays.button_pressed)
+
+
+## Vorgeschlagener Name (aus dem Spielerprofil) gilt erst als eigener, wenn es losgeht.
+func _keep_name() -> void:
+	if is_instance_valid(_name_edit) and _name_edit.text.strip_edges() != "":
+		Players.save_name(_name_edit.text)
 
 
 func _on_back() -> void:

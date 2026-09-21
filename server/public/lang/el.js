@@ -284,4 +284,6 @@ window.VG_LANG.el = { strings: {
   'Du schaust dieser Runde zu.': 'Παρακολουθείς αυτόν τον γύρο.',
   'Der PC hat die Runde beendet.': 'Ο υπολογιστής τελείωσε τον γύρο.',
   'Das Video ist für den Export zu lang.': 'Το βίντεο είναι πολύ μεγάλο για εξαγωγή.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Το παιχνίδι στον υπολογιστή βάζει ακόμα τις τελευταίες ηχογραφήσεις. Ξεκινάει σε λίγο.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Το παιχνίδι στον υπολογιστή δεν έχει τελειώσει ακόμα την τελευταία ατάκα.',
 } };

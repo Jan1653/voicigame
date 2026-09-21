@@ -32,6 +32,7 @@ try {
   [IO.File]::WriteAllText("$game\override.cfg", $cfg)
   $vcfg = "[server]`r`n`r`nurl=`"http://localhost:$Port`"`r`n"
   if ($env:VG_LANG) { $vcfg += "`r`n[ui]`r`n`r`nlang=`"$($env:VG_LANG)`"`r`n" }   # Sprache des Mods zum Testen
+  if ($env:VG_NAME) { $vcfg += "`r`n[join]`r`n`r`nname=`"$($env:VG_NAME)`"`r`n" }   # eigener Name im Mod
   [IO.File]::WriteAllText("$ud\voicigame.cfg", $vcfg)
   $env:SERVER = "http://localhost:$Port"
 

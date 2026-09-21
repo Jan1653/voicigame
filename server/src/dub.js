@@ -94,6 +94,7 @@ export class DubSession {
     this.watch = null;
     this.chat = [];
     this.gameScores = new Map();       // clipId -> 0..100, vom Spiel berechnet
+    this.gameDone = false;             // Spiel am PC hat die letzte Zeile verarbeitet (erst dann gemeinsam anschauen)
     this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null };
     this.onChange = () => {};
     this.onEvent = () => {};
@@ -309,6 +310,21 @@ export class DubSession {
     return true;
   }
 
+  /** Figur nehmen (on = true) oder freigeben (on = false). Doppelt geschickt ändert nichts. */
+  claimFor(character, pid, on) {
+    if (this.phase !== 'hub' || !this.characters().includes(character)) return false;
+    const owner = this.claims.get(character);
+    if (on) {
+      if (owner && owner !== pid && this.room.players.get(owner)) return false;
+      this.claims.set(character, pid);
+    } else if (owner === pid) this.claims.delete(character);
+    return true;
+  }
+
+  claim(character, pid, on) {
+    return typeof on === 'boolean' ? this.claimFor(character, pid, on) : this.toggleClaim(character, pid);
+  }
+
   assign(character, pid) {
     if (this.phase !== 'hub' || !this.characters().includes(character)) return false;
     if (!pid) this.claims.delete(character);
@@ -430,6 +446,7 @@ export class DubSession {
       if (owners.length) t.recorders = owners;
     }
     this.skipped.clear();
+    this.gameDone = false;
     this.phase = 'playing';
     this.turnIndex = 0;
     this.watch = null;
@@ -461,9 +478,11 @@ export class DubSession {
     }
   }
 
-  skipCurrent() {
+  /** clipId: nur überspringen, wenn diese Zeile noch dran ist (doppelt geklickt überspringt sonst zwei). */
+  skipCurrent(clipId = null) {
     const t = this.turns[this.turnIndex];
-    if (!t) return false;
+    if (!t || (this.phase !== 'playing' && this.phase !== 'paused')) return false;
+    if (clipId && t.clipId !== clipId) return false;
     for (const pid of t.recorders) if (!this.hasTake(t.clipId, pid)) this.skipped.add(key(t.clipId, pid));
     this.endPause();
     this.advance();
@@ -485,6 +504,7 @@ export class DubSession {
     this.takes.clear();
     this.skipped.clear();
     this.gameScores.clear();
+    this.gameDone = false;
     this.turns = [];
     this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null };
   }
@@ -508,6 +528,11 @@ export class DubSession {
   }
 
   /* ---------- Gemeinsam anschauen ---------- */
+
+  /** Raum aus dem Spiel: das Spiel ist noch mit der letzten Zeile beschäftigt (es spielt Web-Aufnahmen nacheinander ein). */
+  waitGame() {
+    return this.source === 'game' && this.phase === 'results' && !this.gameDone && this.room.hosts.size > 0;
+  }
 
   startWatch() {
     this.watch = { id: rid(4), at: Date.now() + WATCH_LEAD_MS };
@@ -565,6 +590,7 @@ export class DubSession {
       gameScores: Object.fromEntries(this.gameScores),
       export: { status: this.exportJob.status, pct: Math.round(this.exportJob.pct * 100) / 100, error: this.exportJob.error, name: this.exportJob.name },
       ffmpeg: !!findFfmpeg(),
+      waitGame: this.waitGame(),
       me: forPid ? {
         leader: leader === forPid, canUpload: this.canUpload(forPid), spectator: this.spectators.has(forPid),
         owner: this.leaderId === forPid,
@@ -811,7 +837,9 @@ function receive(req, dest, max, offset = 0) {
       failed = true;
       req.unpipe(ws);
       ws.destroy();
-      fs.rm(dest, { force: true }, () => {});
+      // Upload in Stücken: nur das kaputte Stück verwerfen, damit der nächste Versuch dort weitermachen kann
+      if (offset) fs.truncate(dest, offset, () => {});
+      else fs.rm(dest, { force: true }, () => {});
       reject(e);
     };
     req.on('data', (d) => {
@@ -1084,7 +1112,8 @@ export function installDub(app, ctx) {
         return r.ok ? true : 'start:' + r.reason;
       }
       case 'dub.skip':
-        return d.skipCurrent() || true;
+        d.skipCurrent(msg.clipId ? String(msg.clipId) : null);
+        return true;
       case 'dub.hub':
         d.toHub();
         toPhones(room, { type: 'dub.hub' });
@@ -1095,6 +1124,7 @@ export function installDub(app, ctx) {
         return true;
       case 'dub.watch':
         if (d.phase !== 'results') return 'Anschauen geht erst, wenn alle Zeilen fertig sind.';
+        if (from && d.waitGame()) return 'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.';
         d.startWatch();
         return true;
       case 'dub.watch.stop':
@@ -1162,6 +1192,10 @@ export function installDub(app, ctx) {
       }
       const d = room.dub;
       if (!d) return reply(room, ws, 'Kein Dub-Raum.');
+      if (msg.type === 'dub.done') {
+        d.gameDone = true;
+        return reply(room, ws, true);
+      }
       if (msg.type === 'dub.scores') {
         for (const s of Array.isArray(msg.scores) ? msg.scores.slice(0, 2000) : []) {
           const v = Number(s.score);
@@ -1172,7 +1206,7 @@ export function installDub(app, ctx) {
       if (msg.type === 'dub.claim') {
         // Spieler am PC claimt (Spiel meldet für ihn)
         const pid = String(msg.playerId || '');
-        return reply(room, ws, room.players.has(pid) && d.toggleClaim(String(msg.character), pid) ? true : 'Claimen nicht möglich.');
+        return reply(room, ws, room.players.has(pid) && d.claim(String(msg.character), pid, msg.on) ? true : 'Claimen nicht möglich.');
       }
       if (msg.type === 'dub.activity') {
         if (msg.playerId) d.activity.set(String(msg.playerId), { what: String(msg.what || '').slice(0, 20), at: Date.now() });
@@ -1200,7 +1234,7 @@ export function installDub(app, ctx) {
       if (c !== null) return reply(room, ws, c);
       switch (msg.type) {
         case 'dub.claim':
-          return reply(room, ws, d.toggleClaim(String(msg.character), player.id) ? true : 'Diese Figur hat schon jemand.');
+          return reply(room, ws, d.claim(String(msg.character), player.id, msg.on) ? true : 'Diese Figur hat schon jemand.');
         case 'dub.ready': {
           const have = Math.max(0, Number(msg.have) || 0), need = Math.max(0, Number(msg.need) || 0);
           const before = d.isReady(player.id);

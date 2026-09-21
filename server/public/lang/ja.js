@@ -284,4 +284,6 @@ window.VG_LANG.ja = { strings: {
   'Du schaust dieser Runde zu.': 'このラウンドは観戦中です。',
   'Der PC hat die Runde beendet.': 'PCがラウンドを終了しました。',
   'Das Video ist für den Export zu lang.': '動画が長すぎて書き出せません。',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PCのゲームが最後の録音を取り込んでいます。まもなく始まります。',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PCのゲームはまだ最後のセリフを終えていません。',
 } };

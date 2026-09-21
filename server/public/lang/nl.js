@@ -284,4 +284,6 @@ window.VG_LANG.nl = { strings: {
   'Du schaust dieser Runde zu.': 'Je kijkt deze ronde mee.',
   'Der PC hat die Runde beendet.': 'De pc heeft de ronde beëindigd.',
   'Das Video ist für den Export zu lang.': 'De video is te lang om te exporteren.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Het spel op de pc voegt de laatste opnames nog toe. Het begint zo.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Het spel op de pc is nog niet klaar met de laatste zin.',
 } };

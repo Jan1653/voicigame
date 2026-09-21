@@ -284,4 +284,6 @@ window.VG_LANG.hi = { strings: {
   'Du schaust dieser Runde zu.': 'तुम यह राउंड देख रहे हो।',
   'Der PC hat die Runde beendet.': 'PC ने राउंड खत्म कर दिया।',
   'Das Video ist für den Export zu lang.': 'वीडियो एक्सपोर्ट करने के लिए बहुत लंबा है।',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC पर गेम अभी आखिरी रिकॉर्डिंग जोड़ रहा है। बस शुरू होने वाला है।',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC पर गेम ने अभी आखिरी लाइन पूरी नहीं की है।',
 } };

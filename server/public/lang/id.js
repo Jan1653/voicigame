@@ -284,4 +284,6 @@ window.VG_LANG.id = { strings: {
   'Du schaust dieser Runde zu.': 'Kamu menonton ronde ini.',
   'Der PC hat die Runde beendet.': 'PC mengakhiri ronde.',
   'Das Video ist für den Export zu lang.': 'Video terlalu panjang untuk diekspor.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Game di PC masih memasukkan rekaman terakhir. Sebentar lagi mulai.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Game di PC belum selesai dengan dialog terakhir.',
 } };

@@ -284,4 +284,6 @@ window.VG_LANG.ko = { strings: {
   'Du schaust dieser Runde zu.': '이번 라운드는 구경 중이에요.',
   'Der PC hat die Runde beendet.': 'PC가 라운드를 끝냈어요.',
   'Das Video ist für den Export zu lang.': '영상이 너무 길어서 내보낼 수 없어요.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC의 게임이 아직 마지막 녹음을 넣고 있어요. 곧 시작해요.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC의 게임이 아직 마지막 대사를 끝내지 않았어요.',
 } };

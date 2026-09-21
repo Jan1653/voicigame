@@ -284,4 +284,6 @@ window.VG_LANG.sr = { strings: {
   'Du schaust dieser Runde zu.': 'Gledaš ovu rundu.',
   'Der PC hat die Runde beendet.': 'Računar je završio rundu.',
   'Das Video ist für den Export zu lang.': 'Video je predugačak za izvoz.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Igra na računaru još ubacuje poslednje snimke. Počinje za trenutak.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Igra na računaru još nije završila poslednju repliku.',
 } };

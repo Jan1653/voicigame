@@ -49,7 +49,7 @@ Tested with version 0.5.3 of the game, with and without the Steam multiplayer mo
 ## Play
 
 1. In the game: **Play** → **Voicigame**.
-2. **Create lobby** shows a room code, a QR code and a link. Friends scan the QR code or open the link and pick a name. The phone asks for the microphone once.
+2. **Create lobby** shows a room code, a QR code and a link. Friends scan the QR code or open the link and pick a name. The phone asks for the microphone once. Put your own name in **Your name**, so everyone knows who is playing at the PC.
 3. **Continue** starts a gameshow with everyone in the lobby as group members. **Dubbing** opens the dub pack list of the game.
 4. Players who want to join from their own game choose **Join lobby** instead and type the code.
 
@@ -65,6 +65,9 @@ url="https://voicigame.duckdns.org"
 
 [ui]
 lang="en"          ; mod language, empty = Windows language
+
+[join]
+name="Alex"        ; your name, set in the lobby (hosting and joining)
 
 [stream]
 fps=8              ; live picture: frames per second

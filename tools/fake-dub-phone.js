@@ -12,6 +12,9 @@
 //   PLAYERS  so viele Spieler (mit sich selbst) abwarten, bevor gestartet wird (Standard 1)
 //   CHRONO=1 „der Reihe nach“ statt Figuren
 //   OUT      Ordner für Export und ZIP (bei LEAD)
+//   ROUNDS   so viele Runden mitspielen, bevor es sich verabschiedet (Standard 1)
+//   LATE_CLIP  nur diese Zeilen (Komma) verspätet schicken, LATE_S Sekunden (Standard 15)
+//   WATCH_EARLY=1  als Spielleitung „Anschauen“ schicken, sobald der Server fertig meldet (Spiel noch nicht)
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -38,6 +41,9 @@ let watched = false;
 let exporting = false;
 let finished = false;
 let pauseLogged = null;
+let lastPhase = '';
+let rounds = 0;
+let waitLogged = null;
 let startTimer = null;
 
 async function roomCode() {
@@ -138,11 +144,14 @@ async function record(clipId) {
   const secs = pcm.length / 88200;
   await new Promise((r) => setTimeout(r, 600));
   wsSend({ type: 'dub.activity', what: 'record' });
-  await new Promise((r) => setTimeout(r, Math.min(8000, secs * 1000) + (mode === 'spaet' ? 15000 : 300)));
+  const late = mode === 'spaet' && (!process.env.LATE_CLIP || process.env.LATE_CLIP.split(',').includes(clipId));
+  await new Promise((r) => setTimeout(r, Math.min(8000, secs * 1000) + (late ? (Number(process.env.LATE_S) || 15) * 1000 : 300)));
   const up = await fetch(`${SERVER}/api/rooms/${code}/dub/takes/${encodeURIComponent(clipId)}?${q()}`, {
     method: 'POST', headers: { 'Content-Type': 'audio/wav', 'X-Phone-Score': JSON.stringify({ score: mode === 'still' ? 3 : 97 }) }, body: wav(pcm),
   });
   log('Aufnahme geschickt:', clipId, up.status, (secs).toFixed(2) + ' s', up.ok ? '' : await up.text());
+  // Abgelehnt (z. B. Runde gerade in der Lobby): wenn die Zeile wieder dran ist, nochmal
+  if (!up.ok) sentFor.delete(clipId);
 }
 
 async function finishLead() {
@@ -198,13 +207,28 @@ function onState(s) {
     if (mine && !sentFor.has(d.turn.clipId)) record(d.turn.clipId).catch((e) => log('FEHLER Aufnahme', e.message));
   }
   if (d.phase === 'paused' && d.pause && pauseLogged !== d.pause.playerId) { pauseLogged = d.pause.playerId; log('Pause, warte auf', d.pause.name, `(${Math.round((d.pause.until - Date.now()) / 1000)} s)`); }
+  if (d.phase !== lastPhase) {
+    log('Phase:', d.phase);
+    // Neue Runde (zurück in der Lobby): Zeilen dürfen wieder aufgenommen werden
+    if (d.phase === 'hub') { sentFor = new Set(); watched = false; }
+    lastPhase = d.phase;
+  }
+  if (d.waitGame !== waitLogged && d.phase === 'results') {
+    waitLogged = d.waitGame;
+    log(d.waitGame ? 'Server wartet noch auf das Spiel' : 'Spiel ist fertig');
+  }
   if (d.phase === 'results' && !watched) {
     watched = true;
+    rounds++;
     log(`Fertig: ${d.done}/${d.total} Zeilen, ${d.takes.length} Aufnahmen`);
+    if (process.env.WATCH_EARLY === '1') {
+      log('Schicke Anschauen sofort (Spiel ist vielleicht noch nicht fertig)');
+      wsSend({ type: 'dub.watch' });
+    }
     if (LEAD) {
       wsSend({ type: 'dub.watch' });
       setTimeout(() => finishLead(), 3000);
-    } else setTimeout(() => { if (!finished) { log('ENDE'); process.exit(0); } }, 20000);
+    } else if (rounds >= (Number(process.env.ROUNDS) || 1)) setTimeout(() => { if (!finished) { log('ENDE'); process.exit(0); } }, 20000);
   }
 }
 

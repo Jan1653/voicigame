@@ -284,4 +284,6 @@ window.VG_LANG.cs = { strings: {
   'Du schaust dieser Runde zu.': 'Tohle kolo sleduješ.',
   'Der PC hat die Runde beendet.': 'PC ukončil kolo.',
   'Das Video ist für den Export zu lang.': 'Video je na export příliš dlouhé.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Hra na PC ještě vkládá poslední nahrávky. Hned to začne.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Hra na PC ještě nedokončila poslední repliku.',
 } };

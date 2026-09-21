@@ -284,4 +284,6 @@ window.VG_LANG.uk = { strings: {
   'Du schaust dieser Runde zu.': 'Ти дивишся цей раунд.',
   'Der PC hat die Runde beendet.': 'ПК завершив раунд.',
   'Das Video ist für den Export zu lang.': 'Відео задовге для експорту.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Гра на ПК ще додає останні записи. Зараз почнеться.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Гра на ПК ще не завершила останню репліку.',
 } };

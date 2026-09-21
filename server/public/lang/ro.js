@@ -284,4 +284,6 @@ window.VG_LANG.ro = { strings: {
   'Du schaust dieser Runde zu.': 'Te uiți la runda asta.',
   'Der PC hat die Runde beendet.': 'PC-ul a încheiat runda.',
   'Das Video ist für den Export zu lang.': 'Videoclipul e prea lung pentru export.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Jocul de pe PC încă adaugă ultimele înregistrări. Începe imediat.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Jocul de pe PC nu a terminat încă ultima replică.',
 } };

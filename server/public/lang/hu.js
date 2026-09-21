@@ -284,4 +284,6 @@ window.VG_LANG.hu = { strings: {
   'Du schaust dieser Runde zu.': 'Ezt a kört nézed.',
   'Der PC hat die Runde beendet.': 'A PC befejezte a kört.',
   'Das Video ist für den Export zu lang.': 'A videó túl hosszú az exportáláshoz.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'A gépen futó játék még beteszi az utolsó felvételeket. Mindjárt kezdődik.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'A gépen futó játék még nem végzett az utolsó sorral.',
 } };

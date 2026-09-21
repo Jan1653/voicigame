@@ -284,4 +284,6 @@ window.VG_LANG.sv = { strings: {
   'Du schaust dieser Runde zu.': 'Du tittar på den här rundan.',
   'Der PC hat die Runde beendet.': 'Datorn avslutade rundan.',
   'Das Video ist für den Export zu lang.': 'Videon är för lång för att exporteras.',
+  'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Spelet på datorn lägger fortfarande in de sista inspelningarna. Det börjar strax.',
+  'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Spelet på datorn är inte klart med sista repliken än.',
 } };
