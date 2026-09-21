@@ -299,4 +299,5 @@ window.VG_LANG.da = { strings: {
   'Diese Figur hat schon jemand.': 'Nogen har allerede den figur.',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Serveren er fuld lige nu. Du er nummer {} i køen. Det fortsætter af sig selv.',
   'Der Server ist gerade voll.': 'Serveren er fuld lige nu.',
+  'Dunkler Stil': 'Mørk stil',
 } };

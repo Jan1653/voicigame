@@ -1416,7 +1416,7 @@
     const d = dv();
     const box = $id('results');
     if (!box || !d || d.phase !== 'results') return;
-    const sig = JSON.stringify([d.takes.map((x) => x.v), d.gameScores, D.pack?.clips.length, document.documentElement.dataset.style]);
+    const sig = JSON.stringify([d.takes.map((x) => x.v), d.gameScores, D.pack?.clips.length, document.documentElement.dataset.style, document.documentElement.dataset.theme]);
     if (!force && box.dataset.sig === sig) return;
     box.dataset.sig = sig;
     const perf = (D.pack?.clips || []).filter((c) => !c.useAsIs);

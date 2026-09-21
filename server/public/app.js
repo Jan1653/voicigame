@@ -776,7 +776,10 @@ function drawVoice() {
   }
   const g = cv.getContext('2d');
   const simple = document.documentElement.dataset.style === 'simple';
-  const C = simple
+  const dark = simple && document.documentElement.dataset.theme === 'dark';
+  const C = dark
+    ? { wave: 'rgba(77,155,230,0.2)', waveYou: 'rgba(63,181,106,0.24)', band: 'rgba(77,155,230,0.3)', line: '#7ab6f0', text: '#9ba8b4', head: 'rgba(231,236,241,0.7)', good: '#3fb56a', mid: '#e0a33c', bad: '#e5566a', none: '#6d7884' }
+    : simple
     ? { wave: 'rgba(43,127,212,0.12)', waveYou: 'rgba(47,158,85,0.18)', band: 'rgba(43,127,212,0.2)', line: '#1f63a8', text: '#5b6b78', head: 'rgba(29,43,54,0.6)', good: '#23793f', mid: '#d99a12', bad: '#d33a4a', none: '#8a9aa8' }
     : { wave: 'rgba(10,111,168,0.13)', waveYou: 'rgba(45,138,40,0.2)', band: 'rgba(25,179,230,0.3)', line: 'rgba(10,111,168,0.9)', text: 'rgba(6,56,90,0.55)', head: 'rgba(6,56,90,0.7)', good: '#2d8a28', mid: '#e0a21a', bad: '#e3334a', none: '#5b8fb2' };
   g.setTransform(dpr, 0, 0, dpr, 0, 0);

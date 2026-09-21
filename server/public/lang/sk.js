@@ -299,4 +299,5 @@ window.VG_LANG.sk = { strings: {
   'Diese Figur hat schon jemand.': 'Túto postavu už niekto má.',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Server je teraz plný. Si {}. v rade. Pokračuje sa samo.',
   'Der Server ist gerade voll.': 'Server je teraz plný.',
+  'Dunkler Stil': 'Tmavý štýl',
 } };

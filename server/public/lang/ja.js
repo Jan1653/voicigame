@@ -299,4 +299,5 @@ window.VG_LANG.ja = { strings: {
   'Diese Figur hat schon jemand.': 'このキャラクターはもう誰かが確保しています。',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'いまサーバーが満員です。待ち順は {} 番目です。自動で続きます。',
   'Der Server ist gerade voll.': 'いまサーバーが満員です。',
+  'Dunkler Stil': 'ダークスタイル',
 } };

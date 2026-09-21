@@ -299,4 +299,5 @@ window.VG_LANG.sr = { strings: {
   'Diese Figur hat schon jemand.': 'Ovaj lik je već neko zauzeo.',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Server je sada pun. Ti si {}. u redu. Nastaviće se samo.',
   'Der Server ist gerade voll.': 'Server je sada pun.',
+  'Dunkler Stil': 'Tamni stil',
 } };

@@ -267,3 +267,14 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 @media (min-width: 900px) {
   body.dub-dark .page-tools { position: relative; right: auto; bottom: auto; margin: 16px auto 24px; padding: 0 16px; }
 }
+
+/* Schlicht, dunkel */
+[data-style="simple"][data-theme="dark"] body.dub-dark { background: #14171c; }
+[data-style="simple"][data-theme="dark"] .dub-remote { background: var(--surface); border-color: var(--line); box-shadow: none; }
+[data-style="simple"][data-theme="dark"] .cv-btn:disabled { background: var(--surface-2); color: #6d7884; }
+[data-style="simple"][data-theme="dark"] .cv-pill { background: var(--surface-2); border-color: var(--line); color: var(--ink); box-shadow: none; }
+[data-style="simple"][data-theme="dark"] .dub-status.warn { color: #e0a33c; }
+[data-style="simple"][data-theme="dark"] .dub-options-box { background: var(--surface); border-color: var(--line); }
+[data-style="simple"][data-theme="dark"] .dub-options-box h3 { border-color: var(--line); }
+[data-style="simple"][data-theme="dark"] .dub-exp .dub-bar { background: var(--surface-2); }
+[data-style="simple"][data-theme="dark"] .dub-drop { border-color: var(--line); }

@@ -299,4 +299,5 @@ window.VG_LANG.nl = { strings: {
   'Diese Figur hat schon jemand.': 'Iemand heeft dit personage al.',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'De server is nu vol. Je bent nummer {} in de wachtrij. Het gaat vanzelf verder.',
   'Der Server ist gerade voll.': 'De server is nu vol.',
+  'Dunkler Stil': 'Donkere stijl',
 } };

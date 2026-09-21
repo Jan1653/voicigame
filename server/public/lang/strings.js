@@ -301,4 +301,5 @@ window.VG_STRINGS = [
   ['Diese Figur hat schon jemand.', 'Someone already has this character.', 'Este personaje ya lo tiene alguien.', 'Quelqu\'un a déjà ce personnage.', 'Alguém já tem esse personagem.', 'Qualcuno ha già questo personaggio.'],
   ['Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.', 'The server is full right now. You\'re number {} in the queue. It continues automatically.', 'El servidor está lleno ahora mismo. Eres el número {} en la cola. Sigue solo.', 'Le serveur est plein en ce moment. Tu es numéro {} dans la file. Ça continue tout seul.', 'O servidor está cheio agora. Você é o número {} na fila. Continua sozinho.', 'Il server è pieno in questo momento. Sei il numero {} in coda. Si prosegue da solo.'],
   ['Der Server ist gerade voll.', 'The server is full right now.', 'El servidor está lleno ahora mismo.', 'Le serveur est plein en ce moment.', 'O servidor está cheio agora.', 'Il server è pieno in questo momento.'],
+  ['Dunkler Stil', 'Dark style', 'Estilo oscuro', 'Style sombre', 'Estilo escuro', 'Stile scuro'],
 ];

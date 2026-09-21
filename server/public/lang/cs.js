@@ -299,4 +299,5 @@ window.VG_LANG.cs = { strings: {
   'Diese Figur hat schon jemand.': 'Tuhle postavu už někdo má.',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Server je teď plný. Jsi {}. ve frontě. Pokračuje se samo.',
   'Der Server ist gerade voll.': 'Server je teď plný.',
+  'Dunkler Stil': 'Tmavý styl',
 } };

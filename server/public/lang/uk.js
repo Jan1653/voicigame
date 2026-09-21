@@ -299,4 +299,5 @@ window.VG_LANG.uk = { strings: {
   'Diese Figur hat schon jemand.': 'Цього персонажа вже хтось зайняв.',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Сервер зараз заповнений. Ти {}-й у черзі. Далі все піде само.',
   'Der Server ist gerade voll.': 'Сервер зараз заповнений.',
+  'Dunkler Stil': 'Темний стиль',
 } };

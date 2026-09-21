@@ -299,4 +299,5 @@ window.VG_LANG.th = { strings: {
   'Diese Figur hat schon jemand.': 'มีคนจองตัวละครนี้แล้ว',
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'ตอนนี้เซิร์ฟเวอร์เต็ม คุณอยู่คิวที่ {} ระบบจะไปต่อเอง',
   'Der Server ist gerade voll.': 'ตอนนี้เซิร์ฟเวอร์เต็ม',
+  'Dunkler Stil': 'สไตล์มืด',
 } };
