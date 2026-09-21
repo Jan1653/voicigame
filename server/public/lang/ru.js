@@ -300,4 +300,6 @@ window.VG_LANG.ru = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Сервер сейчас заполнен. Ты {}-й в очереди. Всё продолжится само.',
   'Der Server ist gerade voll.': 'Сервер сейчас заполнен.',
   'Dunkler Stil': 'Тёмный стиль',
+  'Entfernen': 'Убрать',
+  '{} wirklich entfernen?': 'Точно убрать {}?',
 } };

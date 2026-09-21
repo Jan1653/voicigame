@@ -300,4 +300,6 @@ window.VG_LANG.el = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Ο διακομιστής είναι γεμάτος τώρα. Είσαι {}ος στην ουρά. Συνεχίζει μόνο του.',
   'Der Server ist gerade voll.': 'Ο διακομιστής είναι γεμάτος τώρα.',
   'Dunkler Stil': 'Σκούρο στυλ',
+  'Entfernen': 'Αφαίρεση',
+  '{} wirklich entfernen?': 'Σίγουρα να αφαιρεθεί ο/η {};',
 } };

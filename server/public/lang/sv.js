@@ -300,4 +300,6 @@ window.VG_LANG.sv = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Servern är full just nu. Du är nummer {} i kön. Det fortsätter av sig självt.',
   'Der Server ist gerade voll.': 'Servern är full just nu.',
   'Dunkler Stil': 'Mörk stil',
+  'Entfernen': 'Ta bort',
+  '{} wirklich entfernen?': 'Vill du verkligen ta bort {}?',
 } };

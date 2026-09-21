@@ -300,4 +300,6 @@ window.VG_LANG.hi = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'सर्वर अभी भरा हुआ है। कतार में तुम्हारा नंबर {} है। अपने आप आगे बढ़ेगा।',
   'Der Server ist gerade voll.': 'सर्वर अभी भरा हुआ है।',
   'Dunkler Stil': 'डार्क स्टाइल',
+  'Entfernen': 'हटाओ',
+  '{} wirklich entfernen?': '{} को सच में हटाना है?',
 } };

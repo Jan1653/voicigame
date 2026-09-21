@@ -300,4 +300,6 @@ window.VG_LANG.pl = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Serwer jest teraz pełny. Jesteś {}. w kolejce. Dalej pójdzie samo.',
   'Der Server ist gerade voll.': 'Serwer jest teraz pełny.',
   'Dunkler Stil': 'Ciemny styl',
+  'Entfernen': 'Usuń',
+  '{} wirklich entfernen?': 'Na pewno usunąć {}?',
 } };

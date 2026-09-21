@@ -300,4 +300,6 @@ window.VG_LANG.zh = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': '服务器现在已满。你在排队的第 {} 位，轮到你时会自动继续。',
   'Der Server ist gerade voll.': '服务器现在已满。',
   'Dunkler Stil': '深色风格',
+  'Entfernen': '移除',
+  '{} wirklich entfernen?': '确定要移除 {} 吗？',
 } };

@@ -1031,7 +1031,7 @@
 
   function renderPlayers(d) {
     const card = $id('players-card');
-    if (same(card, JSON.stringify(['pl', S.state.players, d.players, d.leader, !!d.pack]))) return;
+    if (same(card, JSON.stringify(['pl', S.state.players, d.players, d.leader, !!d.pack, isLeader()]))) return;
     card.innerHTML = `<h2>${t('Mitspieler')}</h2>`;
     const ul = node('ul', 'player-list');
     for (const p of S.state.players) {
@@ -1048,6 +1048,15 @@
       else if (info.progress) tag.textContent = t(`lädt ${info.progress.have}/${info.progress.need}`);
       else tag.textContent = t('prüft');
       li.append(tag);
+      // Spielleitung (Raum im Browser) kann andere entfernen
+      if (isLeader() && p.kind === 'phone' && p.id !== S.playerId) {
+        const k = node('button', 'dub-kick', '✕');
+        k.type = 'button';
+        k.dataset.kick = p.id;
+        k.title = t('Entfernen');
+        k.setAttribute('aria-label', t('Entfernen'));
+        li.append(k);
+      }
       ul.append(li);
     }
     card.append(ul);
@@ -1566,6 +1575,11 @@
   /* ================= Bedienung ================= */
 
   async function onClick(e) {
+    const kick = e.target.closest('[data-kick]');
+    if (kick) {
+      if (confirm(t(`${pname(kick.dataset.kick)} wirklich entfernen?`))) wsSend({ type: 'dub.kick', playerId: kick.dataset.kick });
+      return;
+    }
     const b = e.target.closest('[data-act], [data-claim]');
     if (!b || b.disabled) return;
     if (b.dataset.claim) return wsSend({ type: 'dub.claim', character: b.dataset.claim, on: b.dataset.on === 'true' });

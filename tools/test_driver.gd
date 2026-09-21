@@ -145,6 +145,25 @@ func _run(plan: String) -> void:
 		_note("FEHLER: kein Web-Spieler")
 		return
 
+	if plan == "kick":
+		# „Entfernen“ in der Lobby: erster Klick fragt nach, zweiter entfernt den Spieler
+		var btns: Array = vg._lobby._list.find_children("*", "Button", true, false)
+		_note("Knopf: %s" % [btns.map(func(x): return x.text)])
+		btns[0].pressed.emit()
+		await get_tree().create_timer(0.5).timeout
+		btns = vg._lobby._list.find_children("*", "Button", true, false)
+		_note("Nach erstem Klick: %s" % [btns.map(func(x): return x.text)])
+		await _shot("lobby_entfernen_nachfrage")
+		btns[0].pressed.emit()
+		var t2 := 0.0
+		while not vg.bridge.web_players().is_empty() and t2 < 10.0:
+			await get_tree().create_timer(0.5).timeout
+			t2 += 0.5
+		_note("Nach zweitem Klick: Web-Spieler %s" % [vg.bridge.web_players().map(func(p): return p.name)])
+		await _shot("lobby_nach_entfernen")
+		_note("ENDE")
+		return
+
 	# Sitzung starten: PC spielt mit, dazu der Web-Spieler
 	vg._start_session(true)
 	await get_tree().create_timer(2.0).timeout

@@ -300,4 +300,6 @@ window.VG_LANG.uk = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Сервер зараз заповнений. Ти {}-й у черзі. Далі все піде само.',
   'Der Server ist gerade voll.': 'Сервер зараз заповнений.',
   'Dunkler Stil': 'Темний стиль',
+  'Entfernen': 'Прибрати',
+  '{} wirklich entfernen?': 'Точно прибрати {}?',
 } };

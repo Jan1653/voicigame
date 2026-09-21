@@ -300,4 +300,6 @@ window.VG_LANG.sr = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Server je sada pun. Ti si {}. u redu. Nastaviće se samo.',
   'Der Server ist gerade voll.': 'Server je sada pun.',
   'Dunkler Stil': 'Tamni stil',
+  'Entfernen': 'Ukloni',
+  '{} wirklich entfernen?': 'Stvarno ukloniti {}?',
 } };

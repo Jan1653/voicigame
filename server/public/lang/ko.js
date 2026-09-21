@@ -300,4 +300,6 @@ window.VG_LANG.ko = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': '지금 서버가 가득 찼어요. 대기열 {}번째예요. 자동으로 이어져요.',
   'Der Server ist gerade voll.': '지금 서버가 가득 찼어요.',
   'Dunkler Stil': '다크 스타일',
+  'Entfernen': '내보내기',
+  '{} wirklich entfernen?': '{}님을 정말 내보낼까요?',
 } };

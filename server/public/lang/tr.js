@@ -300,4 +300,6 @@ window.VG_LANG.tr = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Sunucu şu an dolu. Sırada {}. sıradasın. Kendiliğinden devam edecek.',
   'Der Server ist gerade voll.': 'Sunucu şu an dolu.',
   'Dunkler Stil': 'Koyu stil',
+  'Entfernen': 'Çıkar',
+  '{} wirklich entfernen?': '{} gerçekten çıkarılsın mı?',
 } };

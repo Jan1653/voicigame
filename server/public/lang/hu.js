@@ -300,4 +300,6 @@ window.VG_LANG.hu = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'A szerver most tele van. A sorban a(z) {}. helyen állsz. Magától folytatódik.',
   'Der Server ist gerade voll.': 'A szerver most tele van.',
   'Dunkler Stil': 'Sötét stílus',
+  'Entfernen': 'Eltávolítás',
+  '{} wirklich entfernen?': 'Biztosan eltávolítod: {}?',
 } };

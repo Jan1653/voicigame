@@ -300,4 +300,6 @@ window.VG_LANG.th = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'ตอนนี้เซิร์ฟเวอร์เต็ม คุณอยู่คิวที่ {} ระบบจะไปต่อเอง',
   'Der Server ist gerade voll.': 'ตอนนี้เซิร์ฟเวอร์เต็ม',
   'Dunkler Stil': 'สไตล์มืด',
+  'Entfernen': 'เอาออก',
+  '{} wirklich entfernen?': 'เอา {} ออกจริงไหม?',
 } };

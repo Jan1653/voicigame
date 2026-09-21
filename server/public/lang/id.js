@@ -300,4 +300,6 @@ window.VG_LANG.id = { strings: {
   'Der Server ist gerade voll. Du bist in der Warteschlange auf Platz {}. Es geht automatisch weiter.': 'Server sedang penuh. Kamu antrean nomor {}. Nanti lanjut sendiri.',
   'Der Server ist gerade voll.': 'Server sedang penuh.',
   'Dunkler Stil': 'Gaya gelap',
+  'Entfernen': 'Keluarkan',
+  '{} wirklich entfernen?': 'Yakin keluarkan {}?',
 } };
