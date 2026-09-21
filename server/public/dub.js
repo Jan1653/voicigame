@@ -64,7 +64,10 @@
   /* ================= Kleinigkeiten ================= */
 
   /** Handy oder Tablet: der Lautsprecher ist nah am Mikro, was läuft, landet in der Aufnahme. */
-  const isPhone = () => matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  // Funktion statt const: loadOpts() läuft schon beim Laden, weiter oben in dieser Datei
+  function isPhone() {
+    return matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  }
 
   function loadOpts() {
     const def = { muteClip: false, noCaptions: false, oneTake: false, muteBacking: false, clipVol: 0.33, backVol: 1, quietRec: isPhone() };

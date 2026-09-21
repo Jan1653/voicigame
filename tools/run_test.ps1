@@ -45,7 +45,8 @@ try {
     # "dub-echo" usw.: Dub-Handy (fake-dub-phone.js), Figuren über die Umgebungsvariable CLAIM
     $phoneJs = "fake-phone.js"; $phoneMode = $Phone
     if ($Phone -like "dub-*") { $phoneJs = "fake-dub-phone.js"; $phoneMode = $Phone.Substring(4) }
-    $phoneProc = Start-Process -FilePath "node" -ArgumentList "`"$tools\$phoneJs`"", "`"$ud\voicigame_test\room.txt`"", "Testhandy", $phoneMode `
+    $phoneName = if ($env:VG_PHONE_NAME) { $env:VG_PHONE_NAME } else { "Testhandy" }   # Name des simulierten Handys
+    $phoneProc = Start-Process -FilePath "node" -ArgumentList "`"$tools\$phoneJs`"", "`"$ud\voicigame_test\room.txt`"", "`"$phoneName`"", $phoneMode `
       -WorkingDirectory $tools -PassThru -WindowStyle Hidden `
       -RedirectStandardOutput "$ud\voicigame_test\phone.txt" -RedirectStandardError "$ud\voicigame_test\phone_err.txt"
   }
