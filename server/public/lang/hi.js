@@ -286,4 +286,11 @@ window.VG_LANG.hi = { strings: {
   'Das Video ist für den Export zu lang.': 'वीडियो एक्सपोर्ट करने के लिए बहुत लंबा है।',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC पर गेम अभी आखिरी रिकॉर्डिंग जोड़ रहा है। बस शुरू होने वाला है।',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC पर गेम ने अभी आखिरी लाइन पूरी नहीं की है।',
+  'Stimme beim Aufnehmen: aus': 'रिकॉर्ड करते समय आवाज़: बंद',
+  'Stimme beim Aufnehmen: an': 'रिकॉर्ड करते समय आवाज़: चालू',
+  'Beim Aufnehmen stumm': 'रिकॉर्ड करते समय आवाज़ बंद',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'रिकॉर्ड करते समय असली आवाज़ नहीं चलती, ताकि वह माइक में न जाए। फ़ोन पर यह शुरू से ऐसा ही है।',
+  'Raum verlassen': 'रूम छोड़ें',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'सच में रूम छोड़ना है? फिर तुम इसमें नहीं रहोगे।',
+  'Du hast den Raum verlassen.': 'तुमने रूम छोड़ दिया।',
 } };

@@ -12,7 +12,9 @@ voicigame is two parts: a small mod that runs inside the game, and a web server 
 - **Join from another PC:** with the mod installed, choose **Join lobby** in the game, type the code and play with your own microphone.
 - **Live picture:** players who are not in the same room see the game's screen and hear its sound on their phone (the stage, the jury, the scores). The sound mutes itself while you record.
 - **Two looks** for the website: one like the game and a plain one. The choice is remembered.
-- **25 languages** on the website and in the mod. It starts in the language of the device and can be switched at the bottom of the page.
+- **25 languages** on the website and in the mod. Both start in the language of the device. Switch the website at the bottom of the page, the mod at the bottom of the Voicigame menu.
+- **Phones stay clean while recording:** in dub mode the original voice is muted on phones while you record, so it doesn't end up in the take (switchable).
+- **Leave room** at the bottom of the website, if you want to go.
 
 ## Install the mod
 

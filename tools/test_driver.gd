@@ -1,4 +1,5 @@
 extends Node
+const I18nCheck = preload("../mod/voicigame/i18n.gd")
 ## Nur für Tests, wird nicht mit dem Mod ausgeliefert.
 ## Steuert das Spiel ohne Mausklicks und speichert Bildschirmfotos nach user://voicigame_test/.
 ## Welche Schritte: Umgebungsvariable VOICIGAME_TEST, z. B. "lobby".
@@ -96,6 +97,19 @@ func _run(plan: String) -> void:
 	vg._open_lobby(menu)
 	await get_tree().create_timer(1.5).timeout
 	await _shot("auswahl")
+	if plan == "sprache":
+		# Sprache im Voicigame-Menü auf Englisch stellen: Seite muss sofort englisch sein
+		var pick: OptionButton = vg._lobby.find_children("*", "OptionButton", true, false)[0]
+		for i in pick.item_count:
+			if str(pick.get_item_metadata(i)) == "en":
+				pick.select(i)
+				pick.item_selected.emit(i)
+		await get_tree().create_timer(1.0).timeout
+		await _shot("auswahl_englisch")
+		var texts: Array = vg._lobby.find_children("*", "Label", true, false).map(func(l): return l.text)
+		_note("Sprache jetzt: %s, Texte: %s" % [I18nCheck.chosen(), texts.slice(0, 3)])
+		_note("ENDE")
+		return
 	if plan == "join":
 		await _run_join(vg)
 		return

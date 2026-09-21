@@ -53,6 +53,14 @@ Every 2 minutes it checks GitHub. A new commit on `main` is built and started. T
 - Log: `journalctl -u voicigame-deploy`, server log: `docker logs voicigame`.
 - Do not edit files in `/opt/voicigame` on the server, updates overwrite them. Settings belong in `deploy/.env`.
 
+## Statistics
+
+The server counts per day how many rooms, gameshows, dub rounds, players and video exports there were. Only numbers, no names or addresses. They are kept in the Docker volume `stats` and survive updates.
+
+```bash
+docker exec voicigame node src/stats.js 30      # last 30 days as a bar chart, any number of days works
+```
+
 ## Settings
 
 In `deploy/.env`. After a change: `docker compose -f /opt/voicigame/deploy/docker-compose.yml up -d`.

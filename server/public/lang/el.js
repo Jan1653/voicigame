@@ -286,4 +286,11 @@ window.VG_LANG.el = { strings: {
   'Das Video ist für den Export zu lang.': 'Το βίντεο είναι πολύ μεγάλο για εξαγωγή.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Το παιχνίδι στον υπολογιστή βάζει ακόμα τις τελευταίες ηχογραφήσεις. Ξεκινάει σε λίγο.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Το παιχνίδι στον υπολογιστή δεν έχει τελειώσει ακόμα την τελευταία ατάκα.',
+  'Stimme beim Aufnehmen: aus': 'Φωνή στην ηχογράφηση: όχι',
+  'Stimme beim Aufnehmen: an': 'Φωνή στην ηχογράφηση: ναι',
+  'Beim Aufnehmen stumm': 'Σίγαση στην ηχογράφηση',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Όσο ηχογραφείς, η αρχική φωνή δεν παίζει, για να μην μπει στο μικρόφωνο. Στο κινητό είναι έτσι από την αρχή.',
+  'Raum verlassen': 'Έξοδος από το δωμάτιο',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Σίγουρα θες να φύγεις από το δωμάτιο; Δεν θα είσαι πια μέσα.',
+  'Du hast den Raum verlassen.': 'Βγήκες από το δωμάτιο.',
 } };

@@ -286,4 +286,11 @@ window.VG_LANG.zh = { strings: {
   'Das Video ist für den Export zu lang.': '视频太长，无法导出。',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC 上的游戏还在导入最后几段录音，马上开始。',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC 上的游戏还没处理完最后一句台词。',
+  'Stimme beim Aufnehmen: aus': '录音时的原声：关',
+  'Stimme beim Aufnehmen: an': '录音时的原声：开',
+  'Beim Aufnehmen stumm': '录音时静音',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': '录音时不播放原声，免得它录进麦克风。手机上默认就是这样。',
+  'Raum verlassen': '离开房间',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': '确定要离开房间吗？离开后就不再参加了。',
+  'Du hast den Raum verlassen.': '你已离开房间。',
 } };

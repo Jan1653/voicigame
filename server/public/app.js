@@ -396,7 +396,9 @@ async function record(turnId, seconds, countdown, pad = 0) {
 
   const types = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'];
   const mimeType = types.find((t) => window.MediaRecorder?.isTypeSupported?.(t));
-  const mr = new MediaRecorder(S.stream, mimeType ? { mimeType } : undefined);
+  // Höchste Bitrate: der Browser nimmt nur zwischendurch komprimiert auf, hochgeladen wird danach ohnehin WAV.
+  // Mit der Standard-Bitrate mancher Handys klang das hörbar schlechter.
+  const mr = new MediaRecorder(S.stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 256000 });
   const chunks = [];
   mr.ondataavailable = (e) => e.data.size && chunks.push(e.data);
   const stopped = new Promise((r) => (mr.onstop = r));
@@ -974,7 +976,31 @@ const pname = (id) => S.state?.players.find((p) => p.id === id)?.name || 'Offen'
 
 function showView(name) {
   for (const v of ['join', 'lobby', 'game', 'end', 'dub']) $('#view-' + v).hidden = v !== name;
+  const leave = document.querySelector('.page-leave');   // legt der Abschnitt „Raum verlassen“ an
+  if (leave) leave.hidden = name === 'join' || !S.joined;
 }
+
+/* ================= Raum verlassen ================= */
+// Unten bei Sprache und Stil. Meldet ab (sonst bleibt man als getrennter Spieler im Raum) und gibt das Mikro frei.
+const leaveBtn = document.createElement('button');
+leaveBtn.type = 'button';
+leaveBtn.className = 'style-toggle page-leave';
+leaveBtn.textContent = 'Raum verlassen';
+leaveBtn.hidden = true;
+document.querySelector('.page-tools')?.appendChild(leaveBtn);
+leaveBtn.onclick = () => {
+  if (!S.joined || !confirm(tr('Raum wirklich verlassen? Du bist dann nicht mehr dabei.'))) return;
+  try { S.ws?.send(JSON.stringify({ type: 'leave' })); } catch {}
+  S.joined = false;
+  store(S.code, null);
+  try { S.ws?.close(1000, 'leave'); } catch {}
+  S.stream?.getTracks().forEach((tk) => tk.stop());
+  S.stream = null;
+  if (player) player.pause();
+  history.replaceState(null, '', location.pathname);
+  showView('join');
+  toast(tr('Du hast den Raum verlassen.'));
+};
 
 function render() {
   const st = S.state;

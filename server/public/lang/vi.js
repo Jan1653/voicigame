@@ -286,4 +286,11 @@ window.VG_LANG.vi = { strings: {
   'Das Video ist für den Export zu lang.': 'Video quá dài để xuất.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Trò chơi trên PC vẫn đang đưa các bản ghi cuối vào. Sắp bắt đầu rồi.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Trò chơi trên PC chưa xong câu thoại cuối cùng.',
+  'Stimme beim Aufnehmen: aus': 'Giọng khi ghi âm: tắt',
+  'Stimme beim Aufnehmen: an': 'Giọng khi ghi âm: bật',
+  'Beim Aufnehmen stumm': 'Tắt tiếng khi ghi âm',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Khi bạn ghi âm, giọng gốc không phát để khỏi lọt vào micro. Trên điện thoại mặc định đã như vậy.',
+  'Raum verlassen': 'Rời phòng',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Bạn chắc chắn muốn rời phòng? Bạn sẽ không còn tham gia nữa.',
+  'Du hast den Raum verlassen.': 'Bạn đã rời phòng.',
 } };

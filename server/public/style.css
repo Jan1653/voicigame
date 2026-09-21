@@ -273,6 +273,19 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 800; font-
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 .style-toggle:focus-visible { outline: 3px solid var(--aqua); outline-offset: 2px; }
+.page-leave { color: var(--rec); }
+
+/* ---------- Scrollbalken im Stil der Seite (statt grauem Windows-Balken) ---------- */
+html { scrollbar-color: var(--aqua) rgba(255, 255, 255, .35); }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: rgba(255, 255, 255, .35); }
+::-webkit-scrollbar-thumb { background: var(--aqua); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--aqua-deep); }
+::-webkit-scrollbar-button { display: none; }
+body.dub-dark { scrollbar-color: var(--aqua) rgba(0, 0, 0, .35); }
+[data-style="simple"] { scrollbar-color: #b6c2cc #eef2f5; }
+[data-style="simple"] ::-webkit-scrollbar-track { background: #eef2f5; }
+[data-style="simple"] ::-webkit-scrollbar-thumb { background-color: #b6c2cc; }
 
 /* ---------- Maus ---------- */
 @media (hover: hover) {

@@ -255,3 +255,10 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 [data-style="simple"] .dub-lead-tag { border-radius: 6px; }
 [data-style="simple"] .dub-results h3 { font-weight: 700; }
 [data-style="simple"] .dub-studio.expanded .dub-tv { background: #0b0d11; }
+
+/* Hinweis oben: PC hat die Runde beendet oder ist nicht verbunden */
+.dub-banner { margin: 8px auto; max-width: 900px; padding: 10px 14px; border-radius: 12px; background: var(--rec); color: #fff; font-weight: 700; text-align: center; }
+
+/* Schalter: Originalstimme beim Aufnehmen an/aus */
+.dub-quiet { display: block; margin: 8px auto 0; }
+.dub-quiet[aria-pressed="true"] { outline: 2px solid var(--leaf); }

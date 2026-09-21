@@ -286,4 +286,11 @@ window.VG_LANG.sk = { strings: {
   'Das Video ist für den Export zu lang.': 'Video je na export príliš dlhé.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Hra na PC ešte vkladá posledné nahrávky. Hneď to začne.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Hra na PC ešte nedokončila poslednú repliku.',
+  'Stimme beim Aufnehmen: aus': 'Hlas pri nahrávaní: vyp.',
+  'Stimme beim Aufnehmen: an': 'Hlas pri nahrávaní: zap.',
+  'Beim Aufnehmen stumm': 'Ticho pri nahrávaní',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Pri nahrávaní nehrá pôvodný hlas, aby sa nedostal do mikrofónu. Na telefóne je to tak od začiatku.',
+  'Raum verlassen': 'Opustiť miestnosť',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Naozaj opustiť miestnosť? Už v nej nebudeš.',
+  'Du hast den Raum verlassen.': 'Opustil si miestnosť.',
 } };

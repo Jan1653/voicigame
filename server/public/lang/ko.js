@@ -286,4 +286,11 @@ window.VG_LANG.ko = { strings: {
   'Das Video ist für den Export zu lang.': '영상이 너무 길어서 내보낼 수 없어요.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC의 게임이 아직 마지막 녹음을 넣고 있어요. 곧 시작해요.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC의 게임이 아직 마지막 대사를 끝내지 않았어요.',
+  'Stimme beim Aufnehmen: aus': '녹음할 때 목소리: 끔',
+  'Stimme beim Aufnehmen: an': '녹음할 때 목소리: 켬',
+  'Beim Aufnehmen stumm': '녹음할 때 무음',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': '녹음하는 동안 원래 목소리가 나오지 않아 마이크에 들어가지 않아요. 휴대폰에서는 처음부터 이렇게 돼요.',
+  'Raum verlassen': '방 나가기',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': '정말 방에서 나갈까요? 더 이상 참여하지 않게 돼요.',
+  'Du hast den Raum verlassen.': '방에서 나갔어요.',
 } };

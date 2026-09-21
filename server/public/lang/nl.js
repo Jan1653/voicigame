@@ -286,4 +286,11 @@ window.VG_LANG.nl = { strings: {
   'Das Video ist für den Export zu lang.': 'De video is te lang om te exporteren.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Het spel op de pc voegt de laatste opnames nog toe. Het begint zo.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Het spel op de pc is nog niet klaar met de laatste zin.',
+  'Stimme beim Aufnehmen: aus': 'Stem tijdens opnemen: uit',
+  'Stimme beim Aufnehmen: an': 'Stem tijdens opnemen: aan',
+  'Beim Aufnehmen stumm': 'Stil tijdens opnemen',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Tijdens het opnemen speelt de originele stem niet, zodat die niet in de microfoon komt. Op een telefoon staat dit standaard aan.',
+  'Raum verlassen': 'Kamer verlaten',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Kamer echt verlaten? Je doet dan niet meer mee.',
+  'Du hast den Raum verlassen.': 'Je hebt de kamer verlaten.',
 } };

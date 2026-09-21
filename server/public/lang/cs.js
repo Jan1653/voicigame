@@ -286,4 +286,11 @@ window.VG_LANG.cs = { strings: {
   'Das Video ist für den Export zu lang.': 'Video je na export příliš dlouhé.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Hra na PC ještě vkládá poslední nahrávky. Hned to začne.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Hra na PC ještě nedokončila poslední repliku.',
+  'Stimme beim Aufnehmen: aus': 'Hlas při nahrávání: vyp.',
+  'Stimme beim Aufnehmen: an': 'Hlas při nahrávání: zap.',
+  'Beim Aufnehmen stumm': 'Ticho při nahrávání',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Při nahrávání nehraje původní hlas, aby se nedostal do mikrofonu. Na telefonu je to tak od začátku.',
+  'Raum verlassen': 'Opustit místnost',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Opravdu opustit místnost? Už v ní nebudeš.',
+  'Du hast den Raum verlassen.': 'Opustil jsi místnost.',
 } };

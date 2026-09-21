@@ -381,4 +381,8 @@ func _start_when_ready(hook) -> void:
 		t += 0.5
 		dv = hook._dub()
 	d._note("Figuren beim Start: %s" % [dv.get("characters", []).map(func(c): return "%s=%s" % [c.name, c.claimedBy])])
+	# Raum aus dem Spiel: der PC leitet, kein Handy hat Leitungsrechte
+	_check("Leitung am PC", dv.get("leader") == null, "Spielleitung laut Server: %s" % [dv.get("leader")])
+	var sv = hook.dm.get("video_player_static")
+	d._note("Rauschen unter der Lobby: %s dB" % [sv.volume_db if sv is VideoStreamPlayer else "?"])
 	hook.start_round(true)

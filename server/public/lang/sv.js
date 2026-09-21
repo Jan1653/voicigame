@@ -286,4 +286,11 @@ window.VG_LANG.sv = { strings: {
   'Das Video ist für den Export zu lang.': 'Videon är för lång för att exporteras.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Spelet på datorn lägger fortfarande in de sista inspelningarna. Det börjar strax.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Spelet på datorn är inte klart med sista repliken än.',
+  'Stimme beim Aufnehmen: aus': 'Röst vid inspelning: av',
+  'Stimme beim Aufnehmen: an': 'Röst vid inspelning: på',
+  'Beim Aufnehmen stumm': 'Tyst vid inspelning',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Medan du spelar in spelas originalrösten inte, så att den inte hamnar i mikrofonen. På mobilen är det så från början.',
+  'Raum verlassen': 'Lämna rummet',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Vill du verkligen lämna rummet? Då är du inte med längre.',
+  'Du hast den Raum verlassen.': 'Du har lämnat rummet.',
 } };

@@ -286,4 +286,11 @@ window.VG_LANG.sr = { strings: {
   'Das Video ist für den Export zu lang.': 'Video je predugačak za izvoz.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Igra na računaru još ubacuje poslednje snimke. Počinje za trenutak.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Igra na računaru još nije završila poslednju repliku.',
+  'Stimme beim Aufnehmen: aus': 'Glas pri snimanju: isklj.',
+  'Stimme beim Aufnehmen: an': 'Glas pri snimanju: uklj.',
+  'Beim Aufnehmen stumm': 'Tišina pri snimanju',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Dok snimaš, originalni glas se ne pušta, da ne bi ušao u mikrofon. Na telefonu je tako od početka.',
+  'Raum verlassen': 'Napusti sobu',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Stvarno napustiti sobu? Više nećeš biti u njoj.',
+  'Du hast den Raum verlassen.': 'Napustio si sobu.',
 } };

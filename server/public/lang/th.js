@@ -286,4 +286,11 @@ window.VG_LANG.th = { strings: {
   'Das Video ist für den Export zu lang.': 'วิดีโอยาวเกินไปสำหรับการส่งออก',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'เกมบน PC ยังใส่เสียงที่อัดไว้ชุดสุดท้ายอยู่ อีกเดี๋ยวจะเริ่ม',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'เกมบน PC ยังทำบทพูดสุดท้ายไม่เสร็จ',
+  'Stimme beim Aufnehmen: aus': 'เสียงตอนอัด: ปิด',
+  'Stimme beim Aufnehmen: an': 'เสียงตอนอัด: เปิด',
+  'Beim Aufnehmen stumm': 'ปิดเสียงตอนอัด',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'ระหว่างอัดจะไม่เล่นเสียงต้นฉบับ เพื่อไม่ให้เข้าไมค์ บนมือถือจะเป็นแบบนี้ตั้งแต่แรก',
+  'Raum verlassen': 'ออกจากห้อง',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'ออกจากห้องจริงไหม? จะไม่ได้อยู่ในห้องนี้แล้ว',
+  'Du hast den Raum verlassen.': 'คุณออกจากห้องแล้ว',
 } };

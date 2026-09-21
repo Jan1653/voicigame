@@ -19,12 +19,18 @@ services:
     # Keep the other sites on the same machine responsive
     mem_limit: ${MEM_LIMIT:-800m}
     cpus: ${CPUS:-1.0}
+    # Usage statistics (only counts per day), kept across updates
+    volumes:
+      - stats:/stats
     logging:
       driver: json-file
       options:
         max-size: 10m
         max-file: "3"
     networks: [proxy]
+
+volumes:
+  stats:
 
 networks:
   proxy:

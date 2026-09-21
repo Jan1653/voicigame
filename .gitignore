@@ -6,3 +6,4 @@ tools/last_run/
 tools/game_dir.txt
 deploy/.env
 deploy/.state/
+dist/

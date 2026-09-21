@@ -5,6 +5,7 @@ import express from 'express';
 import { readPack, orderClips, extractPackZip, writeZip, wavInfo, safeName } from './dubfiles.js';
 import { checkStorage, storageAdd, storageLeft } from './limits.js';
 import { ffmpeg, findFfmpeg, probe } from './ffjobs.js';
+import { count as countStat } from './stats.js';
 
 /* =====================================================================
  * Dub-Modus (Synchronisieren): ein Video, jeder spricht die Zeilen seiner Figuren.
@@ -102,8 +103,10 @@ export class DubSession {
 
   /* ---------- Rechte ---------- */
 
-  /** Spielleiter: wer den Raum im Browser erstellt hat, sonst der erste verbundene Web-Spieler. */
+  /** Spielleiter: wer den Raum im Browser erstellt hat, sonst der erste verbundene Web-Spieler.
+   *  Hat das Spiel den Raum eröffnet, leitet der PC (null: kein Handy hat Leitungsrechte). */
   leaderPid() {
+    if (this.source === 'game') return null;
     const phones = [...this.room.players.values()].filter((p) => p.kind === 'phone' && !p.left).sort((a, b) => a.joinOrder - b.joinOrder);
     const lead = phones.find((p) => p.id === this.leaderId);
     if (lead?.connected) return lead.id;
@@ -667,6 +670,7 @@ export class DubSession {
       if (backRaw) fs.rmSync(backRaw, { force: true });
       job.file = out;
       job.status = 'done';
+      countStat('exports');
       job.pct = 1;
     } catch (e) {
       job.status = 'error';
@@ -1108,7 +1112,9 @@ export function installDub(app, ctx) {
       case 'dub.assign':
         return d.assign(String(msg.character), msg.playerId ? String(msg.playerId) : null) || 'Zuweisen nicht möglich.';
       case 'dub.start': {
+        const fresh = d.takes.size === 0;   // „Weitermachen“ zählt nicht als neue Runde
         const r = d.start(!!msg.force);
+        if (r.ok && fresh) countStat('dubs');
         return r.ok ? true : 'start:' + r.reason;
       }
       case 'dub.skip':

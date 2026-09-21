@@ -286,4 +286,11 @@ window.VG_LANG.id = { strings: {
   'Das Video ist für den Export zu lang.': 'Video terlalu panjang untuk diekspor.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Game di PC masih memasukkan rekaman terakhir. Sebentar lagi mulai.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Game di PC belum selesai dengan dialog terakhir.',
+  'Stimme beim Aufnehmen: aus': 'Suara saat merekam: mati',
+  'Stimme beim Aufnehmen: an': 'Suara saat merekam: nyala',
+  'Beim Aufnehmen stumm': 'Senyap saat merekam',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Saat kamu merekam, suara asli tidak diputar supaya tidak masuk ke mikrofon. Di HP ini sudah aktif dari awal.',
+  'Raum verlassen': 'Keluar dari room',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Yakin keluar dari room? Kamu tidak ikut lagi.',
+  'Du hast den Raum verlassen.': 'Kamu sudah keluar dari room.',
 } };

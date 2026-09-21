@@ -13,7 +13,7 @@
   const OPTS_KEY = 'vp:dubopts';
   const SR = 44100;
   const FPS = 60;
-  const VISIBLE_S = 6.3;          // so viele Sekunden zeigt der Wellenform-Kasten im Spiel
+  const VISIBLE_S = 6.3;          // Ersatzlänge, solange die Clip-Länge noch unbekannt ist
   const SNAP_S = 0.012;           // Versatz unter diesem Wert gilt als „synchron“ (wie im Steam-Mod)
 
   const D = {
@@ -63,8 +63,11 @@
 
   /* ================= Kleinigkeiten ================= */
 
+  /** Handy oder Tablet: der Lautsprecher ist nah am Mikro, was läuft, landet in der Aufnahme. */
+  const isPhone = () => matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   function loadOpts() {
-    const def = { muteClip: false, noCaptions: false, oneTake: false, muteBacking: false, clipVol: 0.33, backVol: 1 };
+    const def = { muteClip: false, noCaptions: false, oneTake: false, muteBacking: false, clipVol: 0.33, backVol: 1, quietRec: isPhone() };
     try { return { ...def, ...JSON.parse(localStorage.getItem(OPTS_KEY) || '{}') }; } catch { return def; }
   }
   function saveOpts() {
@@ -423,7 +426,8 @@
       }
     };
     recNode.setOn(true);
-    const player = playBuffers([{ buf, gain: D.opts.muteClip ? 0 : D.opts.clipVol }], null);
+    // Beim Aufnehmen still (am Handy Standard): sonst nimmt das Mikro die Originalstimme mit auf
+    const player = playBuffers([{ buf, gain: D.opts.muteClip || D.opts.quietRec ? 0 : D.opts.clipVol }], null);
     wsSend({ type: 'dub.activity', what: 'record' });
     renderRemote();
     const done = new Promise((resolve) => {
@@ -568,7 +572,8 @@
     const clip = currentClip();
     const an = clip ? D.analysis.get(clip.audio) : null;
     const dur = an?.duration || clip?.duration || VISIBLE_S;
-    const pps = w / Math.max(VISIBLE_S, dur + 0.2);
+    // Wie im Spiel: der Kasten ist genau so lang wie der Clip, hinten kein leeres Stück
+    const pps = w / Math.max(0.5, dur + 0.05);
     D.pps = pps;
     const mid = h / 2;
     const half = h / 2 - 4;
@@ -795,6 +800,7 @@
         <span class="room-chip" data-id="code"></span>
         <span class="me-name"><span data-id="me"></span> <span class="dub-lead-tag" data-id="lead" hidden></span></span>
       </header>
+      <p class="dub-banner" data-id="notice" hidden></p>
 
       <section class="dub-hub" data-id="hub">
         <div class="dub-hub-grid">
@@ -861,6 +867,12 @@
     const lead = $id('lead');
     lead.hidden = !d.me?.leader;
     lead.textContent = t('Spielleitung');
+    // PC hat den Raum geschlossen oder ist weg (Spiel abgestürzt, Verbindung weg)
+    const notice = $id('notice');
+    const msg = st.closed ? t('Der PC hat die Runde beendet.')
+      : d.source === 'game' && st.hostOnline === false ? t('Verbindung zum PC unterbrochen. Warte, bis er wieder da ist …') : '';
+    notice.hidden = !msg;
+    notice.textContent = msg;
     const studio = d.phase !== 'hub';
     $id('hub').hidden = studio;
     $id('studio').hidden = !studio;
@@ -1263,7 +1275,7 @@
     const turn = d.turn;
     const clip = currentClip();
     const busy = D.mode === 'first' || D.mode === 'send';
-    if (same(box, JSON.stringify(['r', D.mode, D.mine, D.attempts, !!D.take, D.turnKey, d.done, d.total, d.turn, d.players.map((p) => [p.id, p.activity, p.spectator]), S.state.players.map((p) => p.name), D.opts.oneTake, d.turns.length, clip?.id]))) return;
+    if (same(box, JSON.stringify(['r', D.mode, D.mine, D.attempts, !!D.take, D.turnKey, d.done, d.total, d.turn, d.players.map((p) => [p.id, p.activity, p.spectator]), S.state.players.map((p) => p.name), D.opts.oneTake, D.opts.quietRec, d.turns.length, clip?.id]))) return;
     let html = `<h3>${turn ? t(`Zeile ${d.done + 1} von ${d.total}`) : ''}</h3>`;
     html += `<p class="dub-speaker">${clip?.chars?.length ? SPEAKER : ''}<span data-f="chars"></span></p>`;
     if (D.mine) {
@@ -1276,7 +1288,10 @@
         ${btn('synced', D.mode === 'synced' ? `<span class="sq"></span>${t('Stopp')}` : t('Synchron anhören'), !!D.take && !busy && !rec && !listen)}
         <span class="gap"></span>
         ${btn('next', `${t('Weiter')} ▶`, !!D.take && !busy && !rec, 'wide')}
-      </div>`;
+      </div>
+      <button type="button" class="cv-pill dub-quiet" data-act="quiet" aria-pressed="${!!D.opts.quietRec}" ${rec ? 'disabled' : ''}
+        title="${t('Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.')}">
+        ${D.opts.quietRec ? t('Stimme beim Aufnehmen: aus') : t('Stimme beim Aufnehmen: an')}</button>`;
       if (D.mode === 'send') html += `<p class="dub-who">${t('Deine Aufnahme wird gesendet …')}</p>`;
     } else {
       const who = turn?.recorders || [];
@@ -1448,7 +1463,7 @@
       const w = cv.width, h = cv.height, mid = h / 2;
       const draw = (data, colIn, colOut) => {
         const top = Math.max(data.top, 0.02);
-        const pps = w / Math.max(VISIBLE_S, an.duration);
+        const pps = w / Math.max(0.5, an.duration + 0.05);
         for (let i = 0; i < data.avg.length; i++) {
           const x = (i / FPS) * pps;
           const a = Math.min(1, data.max[i] / top) * (h / 2 - 2);
@@ -1535,6 +1550,7 @@
       ${opt('muteBacking', t('Hintergrundmusik stumm'), t('Beim Anschauen läuft die Musik des Packs nicht mit. Meist nicht empfohlen.'))}
       ${opt('oneTake', t('Nur ein Versuch'), t('Schwierigkeit: jede Zeile nur einmal aufnehmen.'))}
       ${opt('muteClip', t('Clip stumm'), t('Schwierigkeit: die Clips sind nicht zu hören, nur zu sehen.'))}
+      ${opt('quietRec', t('Beim Aufnehmen stumm'), t('Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.'))}
       ${opt('noCaptions', t('Keine Untertitel'), t('Schwierigkeit: der Text der Zeile wird nicht angezeigt.'))}
       <label class="vol">${t('Clip beim Aufnehmen')}<input type="range" min="0" max="1" step="0.05" data-vol="clipVol" value="${o.clipVol}"><span>${Math.round(o.clipVol * 100)} %</span></label>
       <label class="vol">${t('Hintergrundmusik')}<input type="range" min="0" max="1" step="0.05" data-vol="backVol" value="${o.backVol}"><span>${Math.round(o.backVol * 100)} %</span></label>
@@ -1578,6 +1594,10 @@
         D.mode = 'idle';
         return renderRemote();
       case 'record': return clip && record(clip);
+      case 'quiet':
+        D.opts.quietRec = !D.opts.quietRec;
+        saveOpts();
+        return renderRemote();
       case 'stop-rec': return D.rec?.stop();
       case 'synced': {
         if (D.mode === 'synced') { stopPlayer(); D.mode = 'idle'; return renderRemote(); }

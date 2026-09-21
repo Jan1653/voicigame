@@ -286,4 +286,11 @@ window.VG_LANG.da = { strings: {
   'Das Video ist für den Export zu lang.': 'Videoen er for lang til at blive eksporteret.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Spillet på pc\'en er stadig ved at lægge de sidste optagelser ind. Det starter om lidt.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Spillet på pc\'en er ikke færdigt med den sidste replik endnu.',
+  'Stimme beim Aufnehmen: aus': 'Stemme under optagelse: fra',
+  'Stimme beim Aufnehmen: an': 'Stemme under optagelse: til',
+  'Beim Aufnehmen stumm': 'Lydløs under optagelse',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Mens du optager, afspilles den originale stemme ikke, så den ikke kommer med i mikrofonen. På mobilen er det sådan fra start.',
+  'Raum verlassen': 'Forlad rummet',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Vil du virkelig forlade rummet? Så er du ikke med længere.',
+  'Du hast den Raum verlassen.': 'Du har forladt rummet.',
 } };

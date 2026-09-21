@@ -286,4 +286,11 @@ window.VG_LANG.tr = { strings: {
   'Das Video ist für den Export zu lang.': 'Video dışa aktarmak için çok uzun.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PC\'deki oyun son kayıtları hâlâ ekliyor. Birazdan başlıyor.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PC\'deki oyun son repliği henüz bitirmedi.',
+  'Stimme beim Aufnehmen: aus': 'Kayıtta ses: kapalı',
+  'Stimme beim Aufnehmen: an': 'Kayıtta ses: açık',
+  'Beim Aufnehmen stumm': 'Kayıtta sessiz',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Kayıt yaparken orijinal ses çalmaz, böylece mikrofona girmez. Telefonda baştan böyledir.',
+  'Raum verlassen': 'Odadan çık',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Odadan gerçekten çıkmak istiyor musun? Artık odada olmayacaksın.',
+  'Du hast den Raum verlassen.': 'Odadan çıktın.',
 } };

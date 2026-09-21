@@ -286,4 +286,11 @@ window.VG_LANG.pl = { strings: {
   'Das Video ist für den Export zu lang.': 'Wideo jest za długie do eksportu.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Gra na PC jeszcze dodaje ostatnie nagrania. Zaraz się zacznie.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Gra na PC nie skończyła jeszcze ostatniej kwestii.',
+  'Stimme beim Aufnehmen: aus': 'Głos podczas nagrywania: wył.',
+  'Stimme beim Aufnehmen: an': 'Głos podczas nagrywania: wł.',
+  'Beim Aufnehmen stumm': 'Cisza podczas nagrywania',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Podczas nagrywania oryginalny głos nie gra, żeby nie trafił do mikrofonu. Na telefonie jest tak od początku.',
+  'Raum verlassen': 'Opuść pokój',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Na pewno opuścić pokój? Nie będziesz już w nim.',
+  'Du hast den Raum verlassen.': 'Opuściłeś pokój.',
 } };

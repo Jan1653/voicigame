@@ -11,12 +11,16 @@ import { Room } from './room.js';
 import { relayFrame } from './stream.js';
 import { allowRoom, MAX_ROOMS, MAX_PLAYERS_PER_ROOM, checkStorage, storageAdd } from './limits.js';
 import { installDub } from './dub.js';
+import { count as countStat, flush as flushStats, startAutoFlush } from './stats.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Unerwartete Fehler protokollieren statt den Server (und damit alle Räume) zu beenden
 process.on('unhandledRejection', (e) => console.error('Unbehandelter Fehler:', e));
 process.on('uncaughtException', (e) => console.error('Unerwarteter Fehler:', e));
+// Beim Beenden (Update, Neustart) die Statistik noch schreiben
+startAutoFlush();
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { flushStats(); process.exit(0); });
 const PORT = Number(process.env.PORT) || 8080;
 // Nur auf dieser Adresse lauschen, z. B. 127.0.0.1 hinter Caddy. Leer = alle Adressen.
 const HOST = process.env.HOST || '';
@@ -132,6 +136,7 @@ app.post('/api/rooms', (req, res) => {
   rooms.set(room.code, room);
   if (req.query.game === 'dub') dub.open(room, 'browser');
   console.log(`Raum ${room.code} erstellt`);
+  countStat('rooms');
   res.json({ code: room.code, hostKey: room.hostKey, joinUrl: joinUrl(room) });
 });
 
@@ -335,6 +340,7 @@ wss.on('connection', (ws) => {
           return;
         }
         p = room.addPhone(msg.name);
+        countStat('players');
       } else if (msg.name) p.name = String(msg.name).slice(0, 24) || p.name;
       role = 'phone';
       player = p;
@@ -466,6 +472,8 @@ function handleHost(room, ws, msg) {
       // Host schließt den Raum (Lobby „Zurück“ oder Spiel beendet)
       room.phase = 'ended';
       room.turn = null;
+      // Dub-Runde läuft noch: beenden, sonst warten die Browser auf Zeilen, die nie mehr kommen
+      if (room.dub && ['playing', 'paused'].includes(room.dub.phase)) room.dub.toHub();
       room.closed = true;
       room.closedAt = Date.now();
       toHosts(room, { type: 'game.ended' });
@@ -478,6 +486,7 @@ function handleHost(room, ws, msg) {
     case 'show.round': {
       if (!room.clip(String(msg.clipId))?.available) return err('clip_not_ready', 'Der Clip ist noch nicht hochgeladen.');
       const r = room.startShowRound(msg);
+      if (Number(msg.index) === 0) countStat('shows');   // erste Runde = eine Gameshow
       room.show.status = '';
       for (const id of r.recorders) {
         const p = room.players.get(id);

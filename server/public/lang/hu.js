@@ -286,4 +286,11 @@ window.VG_LANG.hu = { strings: {
   'Das Video ist für den Export zu lang.': 'A videó túl hosszú az exportáláshoz.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'A gépen futó játék még beteszi az utolsó felvételeket. Mindjárt kezdődik.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'A gépen futó játék még nem végzett az utolsó sorral.',
+  'Stimme beim Aufnehmen: aus': 'Hang felvételkor: ki',
+  'Stimme beim Aufnehmen: an': 'Hang felvételkor: be',
+  'Beim Aufnehmen stumm': 'Némítás felvételkor',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Felvétel közben nem szól az eredeti hang, hogy ne kerüljön a mikrofonba. Telefonon ez alapból így van.',
+  'Raum verlassen': 'Kilépés a szobából',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Biztosan kilépsz a szobából? Utána már nem leszel benne.',
+  'Du hast den Raum verlassen.': 'Kiléptél a szobából.',
 } };

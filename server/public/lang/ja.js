@@ -286,4 +286,11 @@ window.VG_LANG.ja = { strings: {
   'Das Video ist für den Export zu lang.': '動画が長すぎて書き出せません。',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'PCのゲームが最後の録音を取り込んでいます。まもなく始まります。',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'PCのゲームはまだ最後のセリフを終えていません。',
+  'Stimme beim Aufnehmen: aus': '録音中の声：オフ',
+  'Stimme beim Aufnehmen: an': '録音中の声：オン',
+  'Beim Aufnehmen stumm': '録音中は無音',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': '録音中は元の声を流しません。マイクに入らないようにするためです。スマホでは最初からこの設定です。',
+  'Raum verlassen': 'ルームを退出',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': '本当にルームを退出しますか？参加できなくなります。',
+  'Du hast den Raum verlassen.': 'ルームを退出しました。',
 } };

@@ -286,4 +286,11 @@ window.VG_LANG.uk = { strings: {
   'Das Video ist für den Export zu lang.': 'Відео задовге для експорту.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Гра на ПК ще додає останні записи. Зараз почнеться.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Гра на ПК ще не завершила останню репліку.',
+  'Stimme beim Aufnehmen: aus': 'Голос під час запису: вимк.',
+  'Stimme beim Aufnehmen: an': 'Голос під час запису: увімк.',
+  'Beim Aufnehmen stumm': 'Без звуку під час запису',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Під час запису оригінальний голос не звучить, щоб не потрапив у мікрофон. На телефоні так одразу.',
+  'Raum verlassen': 'Вийти з кімнати',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Справді вийти з кімнати? Ти більше не братимеш участі.',
+  'Du hast den Raum verlassen.': 'Ти вийшов з кімнати.',
 } };

@@ -286,4 +286,11 @@ window.VG_LANG.ro = { strings: {
   'Das Video ist für den Export zu lang.': 'Videoclipul e prea lung pentru export.',
   'Das Spiel am PC spielt noch die letzten Aufnahmen ein. Gleich geht es los.': 'Jocul de pe PC încă adaugă ultimele înregistrări. Începe imediat.',
   'Das Spiel am PC ist mit der letzten Zeile noch nicht fertig.': 'Jocul de pe PC nu a terminat încă ultima replică.',
+  'Stimme beim Aufnehmen: aus': 'Voce la înregistrare: oprită',
+  'Stimme beim Aufnehmen: an': 'Voce la înregistrare: pornită',
+  'Beim Aufnehmen stumm': 'Fără sunet la înregistrare',
+  'Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.': 'Cât timp înregistrezi, vocea originală nu se aude, ca să nu intre în microfon. Pe telefon e așa din start.',
+  'Raum verlassen': 'Ieși din cameră',
+  'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Sigur ieși din cameră? Nu vei mai fi în ea.',
+  'Du hast den Raum verlassen.': 'Ai ieșit din cameră.',
 } };
