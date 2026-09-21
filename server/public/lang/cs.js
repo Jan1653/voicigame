@@ -293,4 +293,8 @@ window.VG_LANG.cs = { strings: {
   'Raum verlassen': 'Opustit místnost',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Opravdu opustit místnost? Už v ní nebudeš.',
   'Du hast den Raum verlassen.': 'Opustil jsi místnost.',
+  'Der Export ist fehlgeschlagen.': 'Export se nezdařil.',
+  'Zuweisen nicht möglich.': 'Přiřazení není možné.',
+  'Claimen nicht möglich.': 'Zabrat nejde.',
+  'Diese Figur hat schon jemand.': 'Tuhle postavu už někdo má.',
 } };

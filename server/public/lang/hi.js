@@ -293,4 +293,8 @@ window.VG_LANG.hi = { strings: {
   'Raum verlassen': 'रूम छोड़ें',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'सच में रूम छोड़ना है? फिर तुम इसमें नहीं रहोगे।',
   'Du hast den Raum verlassen.': 'तुमने रूम छोड़ दिया।',
+  'Der Export ist fehlgeschlagen.': 'एक्सपोर्ट नहीं हो पाया।',
+  'Zuweisen nicht möglich.': 'असाइन नहीं हो सका।',
+  'Claimen nicht möglich.': 'क्लेम नहीं हो सका।',
+  'Diese Figur hat schon jemand.': 'यह किरदार पहले से किसी के पास है।',
 } };

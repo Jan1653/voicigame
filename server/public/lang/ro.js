@@ -293,4 +293,8 @@ window.VG_LANG.ro = { strings: {
   'Raum verlassen': 'Ieși din cameră',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Sigur ieși din cameră? Nu vei mai fi în ea.',
   'Du hast den Raum verlassen.': 'Ai ieșit din cameră.',
+  'Der Export ist fehlgeschlagen.': 'Exportul a eșuat.',
+  'Zuweisen nicht möglich.': 'Nu s-a putut atribui.',
+  'Claimen nicht möglich.': 'Nu s-a putut rezerva.',
+  'Diese Figur hat schon jemand.': 'Personajul ăsta e deja rezervat.',
 } };

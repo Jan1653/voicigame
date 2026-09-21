@@ -293,4 +293,8 @@ window.VG_LANG.hu = { strings: {
   'Raum verlassen': 'Kilépés a szobából',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Biztosan kilépsz a szobából? Utána már nem leszel benne.',
   'Du hast den Raum verlassen.': 'Kiléptél a szobából.',
+  'Der Export ist fehlgeschlagen.': 'Az exportálás nem sikerült.',
+  'Zuweisen nicht möglich.': 'Nem sikerült kiosztani.',
+  'Claimen nicht möglich.': 'Nem sikerült lefoglalni.',
+  'Diese Figur hat schon jemand.': 'Ezt a karaktert már valaki lefoglalta.',
 } };

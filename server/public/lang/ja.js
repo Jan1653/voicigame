@@ -293,4 +293,8 @@ window.VG_LANG.ja = { strings: {
   'Raum verlassen': 'ルームを退出',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': '本当にルームを退出しますか？参加できなくなります。',
   'Du hast den Raum verlassen.': 'ルームを退出しました。',
+  'Der Export ist fehlgeschlagen.': '書き出しに失敗しました。',
+  'Zuweisen nicht möglich.': '割り当てできませんでした。',
+  'Claimen nicht möglich.': '確保できませんでした。',
+  'Diese Figur hat schon jemand.': 'このキャラクターはもう誰かが確保しています。',
 } };

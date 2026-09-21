@@ -293,4 +293,8 @@ window.VG_LANG.da = { strings: {
   'Raum verlassen': 'Forlad rummet',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Vil du virkelig forlade rummet? Så er du ikke med længere.',
   'Du hast den Raum verlassen.': 'Du har forladt rummet.',
+  'Der Export ist fehlgeschlagen.': 'Eksporten mislykkedes.',
+  'Zuweisen nicht möglich.': 'Kunne ikke tildele.',
+  'Claimen nicht möglich.': 'Kunne ikke reservere.',
+  'Diese Figur hat schon jemand.': 'Nogen har allerede den figur.',
 } };

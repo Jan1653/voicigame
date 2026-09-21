@@ -262,3 +262,8 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 /* Schalter: Originalstimme beim Aufnehmen an/aus */
 .dub-quiet { display: block; margin: 8px auto 0; }
 .dub-quiet[aria-pressed="true"] { outline: 2px solid var(--leaf); }
+
+/* Am PC stehen Sprache, Raum verlassen und Stil sonst fest unten rechts über der Wellenform */
+@media (min-width: 900px) {
+  body.dub-dark .page-tools { position: relative; right: auto; bottom: auto; margin: 16px auto 24px; padding: 0 16px; }
+}

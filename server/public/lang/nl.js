@@ -293,4 +293,8 @@ window.VG_LANG.nl = { strings: {
   'Raum verlassen': 'Kamer verlaten',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Kamer echt verlaten? Je doet dan niet meer mee.',
   'Du hast den Raum verlassen.': 'Je hebt de kamer verlaten.',
+  'Der Export ist fehlgeschlagen.': 'Het exporteren is mislukt.',
+  'Zuweisen nicht möglich.': 'Toewijzen lukt niet.',
+  'Claimen nicht möglich.': 'Claimen lukt niet.',
+  'Diese Figur hat schon jemand.': 'Iemand heeft dit personage al.',
 } };

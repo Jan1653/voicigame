@@ -293,4 +293,8 @@ window.VG_LANG.th = { strings: {
   'Raum verlassen': 'ออกจากห้อง',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'ออกจากห้องจริงไหม? จะไม่ได้อยู่ในห้องนี้แล้ว',
   'Du hast den Raum verlassen.': 'คุณออกจากห้องแล้ว',
+  'Der Export ist fehlgeschlagen.': 'ส่งออกไม่สำเร็จ',
+  'Zuweisen nicht möglich.': 'กำหนดไม่ได้',
+  'Claimen nicht möglich.': 'จองไม่ได้',
+  'Diese Figur hat schon jemand.': 'มีคนจองตัวละครนี้แล้ว',
 } };

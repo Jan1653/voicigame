@@ -293,4 +293,8 @@ window.VG_LANG.uk = { strings: {
   'Raum verlassen': 'Вийти з кімнати',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Справді вийти з кімнати? Ти більше не братимеш участі.',
   'Du hast den Raum verlassen.': 'Ти вийшов з кімнати.',
+  'Der Export ist fehlgeschlagen.': 'Експорт не вдався.',
+  'Zuweisen nicht möglich.': 'Не вдалося призначити.',
+  'Claimen nicht möglich.': 'Не вдалося зайняти.',
+  'Diese Figur hat schon jemand.': 'Цього персонажа вже хтось зайняв.',
 } };

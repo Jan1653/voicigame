@@ -293,4 +293,8 @@ window.VG_LANG.el = { strings: {
   'Raum verlassen': 'Έξοδος από το δωμάτιο',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Σίγουρα θες να φύγεις από το δωμάτιο; Δεν θα είσαι πια μέσα.',
   'Du hast den Raum verlassen.': 'Βγήκες από το δωμάτιο.',
+  'Der Export ist fehlgeschlagen.': 'Η εξαγωγή απέτυχε.',
+  'Zuweisen nicht möglich.': 'Δεν ήταν δυνατή η ανάθεση.',
+  'Claimen nicht möglich.': 'Δεν ήταν δυνατή η δέσμευση.',
+  'Diese Figur hat schon jemand.': 'Αυτόν τον χαρακτήρα τον έχει ήδη κάποιος.',
 } };

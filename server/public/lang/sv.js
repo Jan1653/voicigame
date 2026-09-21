@@ -293,4 +293,8 @@ window.VG_LANG.sv = { strings: {
   'Raum verlassen': 'Lämna rummet',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Vill du verkligen lämna rummet? Då är du inte med längre.',
   'Du hast den Raum verlassen.': 'Du har lämnat rummet.',
+  'Der Export ist fehlgeschlagen.': 'Exporten misslyckades.',
+  'Zuweisen nicht möglich.': 'Det gick inte att tilldela.',
+  'Claimen nicht möglich.': 'Det gick inte att paxa.',
+  'Diese Figur hat schon jemand.': 'Någon har redan paxat den här karaktären.',
 } };

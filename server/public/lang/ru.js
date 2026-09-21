@@ -293,4 +293,8 @@ window.VG_LANG.ru = { strings: {
   'Raum verlassen': 'Выйти из комнаты',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Точно выйти из комнаты? Ты больше не будешь участвовать.',
   'Du hast den Raum verlassen.': 'Ты вышел из комнаты.',
+  'Der Export ist fehlgeschlagen.': 'Экспорт не удался.',
+  'Zuweisen nicht möglich.': 'Не удалось назначить.',
+  'Claimen nicht möglich.': 'Не удалось занять.',
+  'Diese Figur hat schon jemand.': 'Этот персонаж уже занят.',
 } };

@@ -293,4 +293,8 @@ window.VG_LANG.id = { strings: {
   'Raum verlassen': 'Keluar dari room',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Yakin keluar dari room? Kamu tidak ikut lagi.',
   'Du hast den Raum verlassen.': 'Kamu sudah keluar dari room.',
+  'Der Export ist fehlgeschlagen.': 'Ekspor gagal.',
+  'Zuweisen nicht möglich.': 'Tidak bisa ditetapkan.',
+  'Claimen nicht möglich.': 'Tidak bisa diklaim.',
+  'Diese Figur hat schon jemand.': 'Karakter ini sudah diambil orang lain.',
 } };

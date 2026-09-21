@@ -293,4 +293,8 @@ window.VG_LANG.ko = { strings: {
   'Raum verlassen': '방 나가기',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': '정말 방에서 나갈까요? 더 이상 참여하지 않게 돼요.',
   'Du hast den Raum verlassen.': '방에서 나갔어요.',
+  'Der Export ist fehlgeschlagen.': '내보내기에 실패했어요.',
+  'Zuweisen nicht möglich.': '배정할 수 없어요.',
+  'Claimen nicht möglich.': '찜할 수 없어요.',
+  'Diese Figur hat schon jemand.': '이 캐릭터는 이미 누가 찜했어요.',
 } };

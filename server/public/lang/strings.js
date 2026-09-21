@@ -295,4 +295,8 @@ window.VG_STRINGS = [
   ['Raum verlassen', 'Leave room', 'Salir de la sala', 'Quitter la salle', 'Sair da sala', 'Esci dalla stanza'],
   ['Raum wirklich verlassen? Du bist dann nicht mehr dabei.', 'Really leave the room? You won\'t be in it anymore.', '¿Seguro que quieres salir de la sala? Ya no estarás dentro.', 'Vraiment quitter la salle ? Tu n\'en feras plus partie.', 'Sair mesmo da sala? Você não vai mais estar nela.', 'Vuoi davvero uscire dalla stanza? Non ne farai più parte.'],
   ['Du hast den Raum verlassen.', 'You left the room.', 'Has salido de la sala.', 'Tu as quitté la salle.', 'Você saiu da sala.', 'Sei uscito dalla stanza.'],
+  ['Der Export ist fehlgeschlagen.', 'The export failed.', 'La exportación falló.', 'L\'export a échoué.', 'A exportação falhou.', 'L\'esportazione non è riuscita.'],
+  ['Zuweisen nicht möglich.', 'Couldn\'t assign that.', 'No se pudo asignar.', 'Impossible d\'attribuer.', 'Não foi possível atribuir.', 'Impossibile assegnare.'],
+  ['Claimen nicht möglich.', 'Couldn\'t claim that.', 'No se pudo reservar.', 'Impossible de réserver.', 'Não foi possível reservar.', 'Impossibile prenotare.'],
+  ['Diese Figur hat schon jemand.', 'Someone already has this character.', 'Este personaje ya lo tiene alguien.', 'Quelqu\'un a déjà ce personnage.', 'Alguém já tem esse personagem.', 'Qualcuno ha già questo personaggio.'],
 ];

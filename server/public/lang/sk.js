@@ -293,4 +293,8 @@ window.VG_LANG.sk = { strings: {
   'Raum verlassen': 'Opustiť miestnosť',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Naozaj opustiť miestnosť? Už v nej nebudeš.',
   'Du hast den Raum verlassen.': 'Opustil si miestnosť.',
+  'Der Export ist fehlgeschlagen.': 'Export sa nepodaril.',
+  'Zuweisen nicht möglich.': 'Priradenie nie je možné.',
+  'Claimen nicht möglich.': 'Zabrať sa nedá.',
+  'Diese Figur hat schon jemand.': 'Túto postavu už niekto má.',
 } };

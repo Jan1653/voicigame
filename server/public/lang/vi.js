@@ -293,4 +293,8 @@ window.VG_LANG.vi = { strings: {
   'Raum verlassen': 'Rời phòng',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Bạn chắc chắn muốn rời phòng? Bạn sẽ không còn tham gia nữa.',
   'Du hast den Raum verlassen.': 'Bạn đã rời phòng.',
+  'Der Export ist fehlgeschlagen.': 'Xuất video thất bại.',
+  'Zuweisen nicht möglich.': 'Không thể phân công.',
+  'Claimen nicht möglich.': 'Không thể nhận.',
+  'Diese Figur hat schon jemand.': 'Nhân vật này đã có người nhận.',
 } };

@@ -293,4 +293,8 @@ window.VG_LANG.sr = { strings: {
   'Raum verlassen': 'Napusti sobu',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Stvarno napustiti sobu? Više nećeš biti u njoj.',
   'Du hast den Raum verlassen.': 'Napustio si sobu.',
+  'Der Export ist fehlgeschlagen.': 'Izvoz nije uspeo.',
+  'Zuweisen nicht möglich.': 'Dodela nije moguća.',
+  'Claimen nicht möglich.': 'Zauzimanje nije moguće.',
+  'Diese Figur hat schon jemand.': 'Ovaj lik je već neko zauzeo.',
 } };

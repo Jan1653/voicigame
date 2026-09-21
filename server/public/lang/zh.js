@@ -293,4 +293,8 @@ window.VG_LANG.zh = { strings: {
   'Raum verlassen': '离开房间',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': '确定要离开房间吗？离开后就不再参加了。',
   'Du hast den Raum verlassen.': '你已离开房间。',
+  'Der Export ist fehlgeschlagen.': '导出失败。',
+  'Zuweisen nicht möglich.': '无法分配。',
+  'Claimen nicht möglich.': '无法认领。',
+  'Diese Figur hat schon jemand.': '这个角色已经有人认领了。',
 } };

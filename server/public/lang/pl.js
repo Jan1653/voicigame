@@ -293,4 +293,8 @@ window.VG_LANG.pl = { strings: {
   'Raum verlassen': 'Opuść pokój',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Na pewno opuścić pokój? Nie będziesz już w nim.',
   'Du hast den Raum verlassen.': 'Opuściłeś pokój.',
+  'Der Export ist fehlgeschlagen.': 'Eksport się nie powiódł.',
+  'Zuweisen nicht möglich.': 'Nie udało się przypisać.',
+  'Claimen nicht möglich.': 'Nie udało się zająć.',
+  'Diese Figur hat schon jemand.': 'Tę postać ktoś już ma.',
 } };

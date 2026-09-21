@@ -293,4 +293,8 @@ window.VG_LANG.tr = { strings: {
   'Raum verlassen': 'Odadan çık',
   'Raum wirklich verlassen? Du bist dann nicht mehr dabei.': 'Odadan gerçekten çıkmak istiyor musun? Artık odada olmayacaksın.',
   'Du hast den Raum verlassen.': 'Odadan çıktın.',
+  'Der Export ist fehlgeschlagen.': 'Dışa aktarma başarısız oldu.',
+  'Zuweisen nicht möglich.': 'Atanamadı.',
+  'Claimen nicht möglich.': 'Sahiplenilemedi.',
+  'Diese Figur hat schon jemand.': 'Bu karakteri biri zaten aldı.',
 } };
