@@ -595,6 +595,76 @@
     return getComputedStyle($d('.dub-studio')).getPropertyValue(name).trim() || '#fff';
   }
 
+  /** Lautstärke als Balken wie im Spiel: außen die Spitzen dunkel, innen der Mittelwert hell. */
+  function paintBars(g, data, until, colIn, colOut, shift, pps, mid, half) {
+    const n = Math.min(data.avg.length, Math.floor(until * FPS));
+    const top = Math.max(data.top, 0.02);
+    const bw = Math.max(1, pps / FPS + 0.6);
+    const outer = (i) => Math.sqrt(Math.min(1, data.max[i] / top)) * half * 0.9;
+    const inner = (i) => Math.min(outer(i) * 0.86, Math.sqrt(Math.min(1, (data.avg[i] * 2.2) / top)) * half * 0.9 * 0.8);
+    g.fillStyle = colOut;
+    for (let i = 0; i < n; i++) {
+      const a = outer(i);
+      if (a > 1.5) g.fillRect((i / FPS + shift) * pps, mid - a, bw, a * 2);
+    }
+    g.fillStyle = colIn;
+    for (let i = 0; i < n; i++) {
+      const a = inner(i);
+      if (a > 1.5) g.fillRect((i / FPS + shift) * pps, mid - a, bw, a * 2);
+    }
+  }
+
+  /* Einstellung „Wellenformen der Mitspieler: für alle“: unter der Wellenform steht die zuletzt fertige
+   * Zeile eines anderen, Clip und Aufnahme übereinander (so wie es sonst nur das Spiel am PC zeigt). */
+  function renderLast(d) {
+    const box = $id('last');
+    if (!box) return;
+    const prev = d.waves === 'all' && d.turn ? d.turns[d.turn.index - 1] : null;
+    const takes = prev ? d.takes.filter((x) => x.clipId === prev.clipId && x.playerId !== S.playerId) : [];
+    if (!takes.length) {
+      box.hidden = true;
+      D.last = null;
+      return;
+    }
+    box.hidden = false;
+    const k = takes.map((x) => `${x.clipId}|${x.playerId}|${x.v}`).join(',');
+    if (D.last?.key === k) return drawLast();
+    D.last = { key: k, an: null, clipAn: null };
+    box.querySelector('.dub-last-name').textContent = t(`Letzte Aufnahme: ${takes.map((x) => x.name).join(', ')}`);
+    const clip = D.pack?.clips.find((c) => c.id === prev.clipId);
+    (async () => {
+      const bufs = await Promise.all(takes.map(async (x) => {
+        const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(x.clipId)}/${encodeURIComponent(x.playerId)}`));
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return S.ctx.decodeAudioData(await r.arrayBuffer());
+      }));
+      // Zwei Leute in einer Zeile: zusammen als eine Wellenform
+      const pcm = new Float32Array(Math.max(...bufs.map((b) => b.length)));
+      for (const b of bufs) { const m = mixDown(b); for (let i = 0; i < m.length; i++) pcm[i] += m[i]; }
+      const an = waveData(pcm, bufs[0].sampleRate);
+      const clipAn = clip?.audio ? await clipAnalysis(clip.audio).catch(() => null) : null;
+      if (D.last?.key !== k) return;
+      Object.assign(D.last, { an, clipAn });
+      drawLast();
+    })().catch((e) => console.warn('Letzte Aufnahme', e));
+  }
+
+  function drawLast() {
+    const cv = $d('.dub-last canvas');
+    if (!cv || !cv.offsetParent || !D.last?.an) return;
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    const { an, clipAn } = D.last;
+    const pps = w / Math.max(0.5, (clipAn?.duration || an.duration) + 0.05);
+    if (clipAn) paintBars(g, clipAn, clipAn.duration, css('--clip-in'), css('--clip-out'), 0, pps, h / 2, h / 2 - 2);
+    paintBars(g, an, an.duration, css('--take-in'), css('--take-out'), 0, pps, h / 2, h / 2 - 2);
+  }
+
   function drawWave() {
     const cv = $d('.dub-wave canvas');
     if (!cv || !cv.offsetParent) return;
@@ -616,23 +686,7 @@
     const mid = h / 2;
     const half = h / 2 - 4;
 
-    const bars = (data, until, colIn, colOut, shift) => {
-      const n = Math.min(data.avg.length, Math.floor(until * FPS));
-      const top = Math.max(data.top, 0.02);
-      const bw = Math.max(1, pps / FPS + 0.6);
-      const outer = (i) => Math.sqrt(Math.min(1, data.max[i] / top)) * half * 0.9;
-      const inner = (i) => Math.min(outer(i) * 0.86, Math.sqrt(Math.min(1, (data.avg[i] * 2.2) / top)) * half * 0.9 * 0.8);
-      g.fillStyle = colOut;
-      for (let i = 0; i < n; i++) {
-        const a = outer(i);
-        if (a > 1.5) g.fillRect((i / FPS + shift) * pps, mid - a, bw, a * 2);
-      }
-      g.fillStyle = colIn;
-      for (let i = 0; i < n; i++) {
-        const a = inner(i);
-        if (a > 1.5) g.fillRect((i / FPS + shift) * pps, mid - a, bw, a * 2);
-      }
-    };
+    const bars = (data, until, colIn, colOut, shift) => paintBars(g, data, until, colIn, colOut, shift, pps, mid, half);
     const dots = (p, until, col, shift) => {
       if (!p) return;
       g.fillStyle = col;
@@ -871,6 +925,7 @@
         <aside class="dub-remote" data-id="remote"></aside>
         <p class="dub-caption" data-id="caption"></p>
         <div class="dub-wave" data-id="wave"><canvas></canvas><span class="dub-sync" hidden></span></div>
+        <div class="dub-last" data-id="last" hidden><p class="dub-last-name"></p><canvas></canvas></div>
         <div class="dub-extra" data-id="extra"></div>
       </section>
       <div class="dub-options" data-id="options" hidden></div>`;
@@ -1022,11 +1077,13 @@
     const card = $id('chars-card');
     if (!d.pack) { card.hidden = true; return; }
     card.hidden = false;
-    if (same(card, JSON.stringify(['c', d.chrono, d.characters, d.me, S.state.players.map((p) => [p.id, p.name, p.kind]), d.players.map((p) => p.spectator), d.phase, d.leader]))) return;
+    if (same(card, JSON.stringify(['c', d.chrono, d.waves, d.characters, d.me, S.state.players.map((p) => [p.id, p.name, p.kind]), d.players.map((p) => p.spectator), d.phase, d.leader]))) return;
     const lead = isLeader() && d.phase === 'hub';
     let html = `<div class="row-between"><h2>${d.chrono ? t('Der Reihe nach') : t('Figuren claimen')}</h2></div>`;
     html += `<p class="muted small">${d.chrono ? t('Alle Zeilen kommen nacheinander, ihr wechselt euch ab.') : t('Tipp die Figuren an, die du sprechen willst. Freie Figuren bekommt beim Start jemand zufällig. Hat eine Zeile zwei Figuren, nehmen beide getrennt auf.')}</p>`;
     if (lead) html += `<label class="dub-switch"><input type="checkbox" data-act="chrono" ${d.chrono ? 'checked' : ''}> ${t('Der Reihe nach (ohne Figuren)')}</label>`;
+    // Browser-Raum: die Spielleitung entscheidet, ob alle die Wellenformen der anderen sehen (im Spiel-Raum stellt das der PC ein)
+    if (lead && d.source !== 'game') html += `<label class="dub-switch"><input type="checkbox" data-act="waves" ${d.waves === 'all' ? 'checked' : ''}> ${t('Wellenformen der Mitspieler')}</label>`;
     html += `<label class="dub-switch"><input type="checkbox" data-act="spectate" ${d.me?.spectator ? 'checked' : ''}> ${t('Nur zuschauen')}</label>`;
     card.innerHTML = html;
     if (!d.chrono) {
@@ -1272,6 +1329,7 @@
     renderRemote();
     renderExtra(d);
     drawWave();
+    renderLast(d);
   }
 
   async function newTurn(clip) {
@@ -1526,6 +1584,7 @@
     video.hidden = !watching;
     $id('results').hidden = watching;
     $id('wave').hidden = true;
+    $id('last').hidden = true;
     renderResultsScreen();
     renderResultsRemote(d);
     renderResultsExtra(d);
@@ -1802,6 +1861,7 @@
     if (x.dataset.id === 'zip-input' && x.files[0]) { uploadZip(x.files[0]); x.value = ''; return; }
     if (x.dataset.id === 'dir-input' && x.files.length) { uploadFiles([...x.files]); x.value = ''; return; }
     if (x.dataset.act === 'chrono') return wsSend({ type: 'dub.settings', chrono: x.checked });
+    if (x.dataset.act === 'waves') return wsSend({ type: 'dub.settings', waves: x.checked ? 'all' : 'off' });
     if (x.dataset.act === 'spectate') return wsSend({ type: 'dub.spectate', on: x.checked });
     if (x.dataset.act === 'order') return wsSend({ type: 'dub.settings', orderMode: x.value });
     if (x.dataset.opt) { D.opts[x.dataset.opt] = x.checked; saveOpts(); return; }

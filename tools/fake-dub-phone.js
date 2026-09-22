@@ -11,6 +11,7 @@
 //   LEAD=1   leitet: startet, wenn PLAYERS Spieler bereit sind; am Ende anschauen, exportieren, herunterladen
 //   PLAYERS  so viele Spieler (mit sich selbst) abwarten, bevor gestartet wird (Standard 1)
 //   CHRONO=1 „der Reihe nach“ statt Figuren
+//   WAVES    bei LEAD: Wellenformen der Mitspieler (all | host | off)
 //   OUT      Ordner für Export und ZIP (bei LEAD)
 //   ROUNDS   so viele Runden mitspielen, bevor es sich verabschiedet (Standard 1)
 //   LATE_CLIP  nur diese Zeilen (Komma) verspätet schicken, LATE_S Sekunden (Standard 15)
@@ -193,6 +194,7 @@ function onState(s) {
     const want = process.env.CLAIM === 'alle' ? d.characters.map((c) => c.name) : process.env.CLAIM.split(',').map((x) => x.trim());
     for (const c of want) wsSend({ type: 'dub.claim', character: c });
     if (LEAD && process.env.CHRONO === '1') wsSend({ type: 'dub.settings', chrono: true });
+    if (LEAD && process.env.WAVES) wsSend({ type: 'dub.settings', waves: process.env.WAVES });
     log('Claime', want.join(', '));
   }
   if (LEAD && d.phase === 'hub' && d.canStart?.ok && d.players.length >= PLAYERS && !d.turns.length && !startTimer) {

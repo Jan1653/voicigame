@@ -83,6 +83,7 @@ export class DubSession {
     this.useAsIs = new Set();
     this.claims = new Map();           // Figur -> Spieler
     this.chrono = false;               // „der Reihe nach“
+    this.waves = 'host';               // Wellenformen fremder Aufnahmen: all = alle sehen sie, host = nur das Spiel am PC, off = niemand
     this.spectators = new Set();
     this.phase = 'hub';                // hub | playing | paused | results
     this.startedAt = null;             // Beginn der laufenden Dub-Runde (nur für die Statistik)
@@ -840,6 +841,7 @@ export class DubSession {
       video: { status: this.video.status, pct: Math.round(this.video.pct * 100) / 100, duration: this.video.duration },
       orderMode: this.orderMode,
       chrono: this.chrono,
+      waves: this.waves,
       characters: this.characters().map((c) => ({ name: c, claimedBy: this.claims.get(c) || null, lines: counts[c] || 0 })),
       players,
       canStart: this.canStart(),
@@ -1385,7 +1387,8 @@ export function installDub(app, ctx) {
   function leaderAction(room, d, msg, from) {
     switch (msg.type) {
       case 'dub.settings':
-        if (d.phase !== 'hub') return 'Das geht nur in der Lobby.';
+        if (['all', 'host', 'off'].includes(msg.waves)) d.waves = msg.waves;   // geht auch mitten in der Runde
+        if (d.phase !== 'hub') return msg.waves ? true : 'Das geht nur in der Lobby.';
         if (typeof msg.chrono === 'boolean') d.chrono = msg.chrono;
         if (msg.orderMode && d.source !== 'game' && ['chrono', 'file', 'character', 'random'].includes(msg.orderMode)) {
           d.orderMode = msg.orderMode;

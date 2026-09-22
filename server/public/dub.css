@@ -61,7 +61,7 @@
   display: grid;
   gap: 14px;
   grid-template-columns: 1fr;
-  grid-template-areas: "tv" "caption" "wave" "remote" "extra";
+  grid-template-areas: "tv" "caption" "wave" "last" "remote" "extra";
 }
 body.dub-dark { background: #1e1e1e; }
 body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
@@ -115,6 +115,11 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 }
 .dub-wave canvas { width: 100%; height: 100%; display: block; }
 .dub-wave.drag { cursor: ew-resize; }
+/* Letzte Aufnahme eines anderen (Einstellung „Wellenformen: für alle“) */
+.dub-last { grid-area: last; }
+.dub-last[hidden] { display: none; }
+.dub-last-name { margin: 0 0 4px; font-size: .85rem; font-weight: 800; opacity: .85; }
+.dub-last canvas { width: 100%; height: clamp(44px, 7vw, 80px); display: block; border-radius: 10px; background: #000; }
 .dub-sync {
   position: absolute; right: 8px; top: 6px; font-size: .9rem; font-weight: 700; color: #fff;
   background: rgba(0,0,0,.6); padding: 2px 8px; border-radius: 8px;
@@ -208,10 +213,10 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 @media (min-width: 900px) {
   .dub-studio {
     grid-template-columns: minmax(0, 1fr) 290px;
-    grid-template-areas: "tv remote" "caption caption" "wave wave" "extra extra";
+    grid-template-areas: "tv remote" "caption caption" "wave wave" "last last" "extra extra";
     column-gap: 3vw;
   }
-  .dub-studio .dub-caption, .dub-studio .dub-wave { margin: 0 6%; }
+  .dub-studio .dub-caption, .dub-studio .dub-wave, .dub-studio .dub-last { margin: 0 6%; }
   .dub-btns { grid-template-columns: 1fr; }
   #app.dub-wide { max-width: 1320px; padding-bottom: 90px; }
   .dub-hub-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; }
@@ -240,6 +245,7 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 [data-style="simple"] .dub-screen video { object-fit: contain; }
 [data-style="simple"] .dub-caption { text-shadow: none; color: var(--ink); font-weight: 600; }
 [data-style="simple"] .dub-wave { border-width: 1px; border-radius: 8px; background: #15181e; }
+[data-style="simple"] .dub-last canvas { border-radius: 8px; background: #15181e; }
 [data-style="simple"] .dub-remote { background: #fff; border: 1px solid #dde4ea; border-radius: 12px; box-shadow: 0 1px 3px rgba(20,40,60,.08); color: var(--ink); }
 [data-style="simple"] .dub-remote h3 { font-weight: 700; }
 [data-style="simple"] .cv-btn {
