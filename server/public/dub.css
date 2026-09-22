@@ -51,8 +51,9 @@
   --btn-a: #e2f5f8; --btn-b: #a8dce6;
   --btn-off-a: #666; --btn-off-b: #4a4a4a;
   --wave-frame: #6fdcff;
-  --clip-in: #ff00ff; --clip-out: #8a008a; --clip-pitch: #ff1a1a;
-  --take-in: #3cff3c; --take-out: #0f7a0f; --take-pitch: #9dff6a;
+  /* Farben wie im Spiel: Original magenta mit roter Tonhöhe, Aufnahme cyan mit grüner; die Spitzen durchscheinend */
+  --clip-in: #ff00ff; --clip-out: rgba(255, 0, 255, .44); --clip-pitch: #ff0000;
+  --take-in: #00ffff; --take-out: rgba(0, 255, 255, .44); --take-pitch: #00ff00;
   --playbar: #d8421c;
   --results: #0037ff;
   font-family: "Duru Sans", var(--font);
@@ -65,12 +66,13 @@
 }
 body.dub-dark { background: #1e1e1e; }
 body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
+/* Hintergrund wie im Spiel: Streifen, die langsam wandern und sich zum Rand hin wölben (Zeichnung in dub.js, backdrop).
+   Ohne WebGL bleiben die Streifen stehen. */
 .dub-backdrop {
   position: fixed; inset: 0; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(ellipse at 50% 115%, rgba(0,0,0,0) 30%, rgba(0,0,0,.45) 90%),
-    repeating-radial-gradient(circle at 50% 118%, #242424 0 26px, #1b1b1b 26px 52px);
+  background: repeating-linear-gradient(#222 0 16px, #1e1e1e 16px 32px);
 }
+.dub-backdrop canvas { width: 100%; height: 100%; display: block; }
 .dub-tv { grid-area: tv; }
 .dub-bezel {
   border-radius: clamp(18px, 4vw, 44px); padding: clamp(10px, 3.2vw, 38px);

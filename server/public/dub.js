@@ -23,6 +23,9 @@
     pack: null,
     packLoading: null,
     files: new Map(),             // url -> Blob
+    fp: null,                     // Fingerabdruck des Packs (Schlüssel im Zwischenspeicher)
+    own: false,                   // alles im Zwischenspeicher: der PC muss das Pack nicht hochladen
+    videoUrl: null,               // Video aus dem Zwischenspeicher (objectURL)
     buffers: new Map(),           // url -> AudioBuffer (die letzten paar)
     analysis: new Map(),          // url -> Wellenform-Daten
     takeBlobs: new Map(),         // clipId|pid|v -> Blob
@@ -133,6 +136,8 @@
     if (fresh) {
       D.pack = null;
       D.files.clear();
+      D.own = false;
+      if (D.videoUrl) { URL.revokeObjectURL(D.videoUrl); D.videoUrl = null; }
       D.buffers.clear();
       D.analysis.clear();
       for (const u of objUrls.values()) URL.revokeObjectURL(u);
@@ -145,17 +150,16 @@
       if (j.version !== v || !j.pack) return;
       D.pack = j.pack;
       D.orderVersion = j.orderVersion;
+      D.fp = j.pack.fp || null;
+      // Was schon im Zwischenspeicher liegt, gleich übernehmen. Liegt alles da (samt Video), braucht dieser
+      // Browser nichts vom Server und meldet das: dann bleibt das Pack auf dem PC, der es gewählt hat.
+      const all = packUrls(j.pack, true);
+      await fromCache(all, v);
+      if (v !== D.version) return;
+      D.own = !!D.fp && all.every((u) => D.files.has(u)) && !!(await cachedVideo(v));
       // Kommt das Pack aus dem Spiel, sind am Anfang noch nicht alle Zeilen da (ready = false).
       // Geholt wird nur, was da ist; der Rest kommt mit der nächsten Fassung nach.
-      const urls = [];
-      for (const c of j.pack.clips) {
-        if (c.ready === false) continue;
-        if (c.audio) urls.push(c.audio);
-        if (c.image) urls.push(c.image);
-      }
-      if (j.pack.backing) urls.push(j.pack.backing);
-      if (j.pack.icon) urls.push(j.pack.icon);
-      const want = [...new Set(urls)];
+      const want = D.own ? all : packUrls(j.pack, false);
       D.need = want.length;
       D.queue = want.filter((u) => !D.files.has(u));
       reportReady();
@@ -166,7 +170,101 @@
 
   function reportReady() {
     const have = D.pack ? [...D.files.keys()].length : 0;
-    wsSend({ type: 'dub.ready', have: Math.min(have, D.need || 0), need: D.need || 0, version: D.version });
+    wsSend({ type: 'dub.ready', have: Math.min(have, D.need || 0), need: D.need || 0, version: D.version, own: D.own });
+  }
+
+  /** Alle Dateien, die der Browser vom Pack braucht (mit ready: nur die, die schon auf dem Server sind). */
+  function packUrls(pack, all) {
+    const urls = [];
+    for (const c of pack.clips) {
+      if (!all && c.ready === false) continue;
+      if (c.audio) urls.push(c.audio);
+      if (c.image) urls.push(c.image);
+    }
+    if (pack.backing) urls.push(pack.backing);
+    if (pack.icon) urls.push(pack.icon);
+    return [...new Set(urls)];
+  }
+
+  /* ================= Zwischenspeicher für Packs =================
+   * Pack-Dateien bleiben im Browser (Cache Storage), erkannt am Fingerabdruck des Packs (Namen und Größen
+   * aller Dateien). Die letzten CACHE_KEEP Packs bleiben, ältere fliegen raus. Ohne Cache Storage (privates
+   * Fenster, kein https) läuft alles wie vorher, nur ohne Speichern. */
+  const CACHE = 'vg-packs-v1';
+  const CACHE_KEEP = 4;
+  let cachePromise = null;
+  function openCache() {
+    if (!cachePromise) cachePromise = (window.caches ? caches.open(CACHE) : Promise.reject(new Error('no cache'))).catch(() => null);
+    return cachePromise;
+  }
+  /** Schlüssel einer Pack-Datei; als MP3 umgewandelter Ton (ältere iPhones) bekommt einen eigenen. */
+  function cacheKey(u) {
+    const mp3 = /\.(ogg|opus|flac)$/i.test(decodeURIComponent(u)) && audioUrl(u).includes('fmt=mp3');
+    return `/vgcache/${D.fp}/${u.split('/').pop()}${mp3 ? '.mp3' : ''}`;
+  }
+
+  async function fromCache(urls, v) {
+    const cache = D.fp ? await openCache() : null;
+    if (!cache) return;
+    touchCache(D.fp);
+    await Promise.all(urls.map(async (u) => {
+      try {
+        const hit = await cache.match(cacheKey(u));
+        if (hit && v === D.version) D.files.set(u, await hit.blob());
+      } catch {}
+    }));
+  }
+
+  async function toCache(u, res) {
+    const cache = D.fp ? await openCache() : null;
+    if (cache) await cache.put(cacheKey(u), res).catch(() => {});
+  }
+
+  /** Video aus dem Zwischenspeicher als objectURL (oder null). */
+  async function cachedVideo(v) {
+    if (D.videoUrl) return D.videoUrl;
+    const cache = D.fp ? await openCache() : null;
+    if (!cache) return null;
+    try {
+      const hit = await cache.match(`/vgcache/${D.fp}/video`);
+      if (!hit || v !== D.version) return null;
+      D.videoUrl = URL.createObjectURL(await hit.blob());
+      return D.videoUrl;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Video einmal ganz laden und speichern (läuft nebenher, wenn alle Zeilen da sind). */
+  let videoSaving = null;
+  function saveVideo() {
+    const v = D.version;
+    if (videoSaving === v || D.videoUrl || !D.fp || !['ready', 'original'].includes(dv()?.video?.status)) return;
+    videoSaving = v;
+    (async () => {
+      const cache = await openCache();
+      if (!cache || v !== D.version) return;
+      const r = await fetch(auth(`/api/rooms/${S.code}/dub/video`));
+      if (!r.ok || v !== D.version) throw new Error('HTTP ' + r.status);
+      await cache.put(`/vgcache/${D.fp}/video`, r);
+    })().catch((e) => { console.warn('Video speichern', e); videoSaving = null; });
+  }
+
+  /** Zuletzt benutzte Packs merken, ältere aus dem Zwischenspeicher werfen. */
+  function touchCache(fp) {
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('vg:packs') || '[]'); } catch {}
+    list = [fp, ...list.filter((x) => x !== fp)];
+    const drop = list.slice(CACHE_KEEP);
+    try { localStorage.setItem('vg:packs', JSON.stringify(list.slice(0, CACHE_KEEP))); } catch {}
+    if (!drop.length) return;
+    openCache().then(async (cache) => {
+      if (!cache) return;
+      for (const req of await cache.keys()) {
+        const path = new URL(req.url).pathname;
+        if (drop.some((x) => path.startsWith(`/vgcache/${x}/`))) await cache.delete(req);
+      }
+    }).catch(() => {});
   }
 
   function prioritize(urls) {
@@ -186,7 +284,7 @@
         D.files.set(u, b);
         const n = D.files.size;
         if (n === D.need || n % 3 === 0) reportReady();
-        if (n === D.need) render();
+        if (n === D.need) { render(); saveVideo(); }
       }).catch(async () => {
         await sleep(1500);
         if (version === D.version) D.queue.push(u);
@@ -197,6 +295,7 @@
   async function fetchBlob(u) {
     const r = await fetch(/\.(ogg|opus|flac|wav|mp3|m4a|aac)$/i.test(decodeURIComponent(u)) ? audioUrl(u) : auth(u));
     if (!r.ok) throw new Error('HTTP ' + r.status);
+    toCache(u, r.clone());
     return r.blob();
   }
 
@@ -221,49 +320,153 @@
     return buf;
   }
 
-  /** Wellenform wie im Spiel: je 1/60 s mittlere und größte Lautstärke, dazu Tonhöhe als Punkte. */
-  function waveData(pcm, rate) {
-    const step = rate / FPS;
-    const n = Math.max(1, Math.floor(pcm.length / step));
-    const avg = new Float32Array(n), max = new Float32Array(n);
-    let top = 1e-6;
-    for (let i = 0; i < n; i++) {
-      let e = 0, m = 0;
-      const a = Math.floor(i * step), b = Math.min(pcm.length, Math.floor((i + 1) * step));
-      for (let j = a; j < b; j++) { const v = Math.abs(pcm[j]); e += v * v; if (v > m) m = v; }
-      avg[i] = Math.sqrt(e / Math.max(1, b - a));
-      max[i] = m;
-      if (m > top) top = m;
+  /* ================= Wellenform wie im Spiel =================
+   * Das Spiel misst 60-mal pro Sekunde das Spektrum (Godot-Spektrumanalyse: FFT über 2048 Samples, Fenster über
+   * 1024, Betrag / 1024) und nimmt davon zwischen 65 Hz und 8,4 kHz Mittel und Spitze, in dB mit 60 dB Umfang
+   * als Byte 0..255. Die Tonhöhe ist der Schwerpunkt über 128 Frequenzbänder. So rechnet es auch hier. */
+  const GW_N = 2048, GW_BINS = 1024;
+  let gw = null;
+  function gwSetup() {
+    if (gw) return gw;
+    const bits = Math.log2(GW_N);
+    gw = { win: new Float32Array(GW_N), re: new Float64Array(GW_N), im: new Float64Array(GW_N), rev: new Uint16Array(GW_N),
+      cos: new Float64Array(GW_N / 2), sin: new Float64Array(GW_N / 2) };
+    for (let i = 0; i < GW_N; i++) {
+      gw.win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / GW_BINS);   // wie Godot: Fenster über fft_size, zweimal
+      let r = 0;
+      for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b);
+      gw.rev[i] = r;
     }
-    let pitch = null;
-    try { pitch = analyze(pcm, rate); } catch {}
-    return { ...smooth(avg, max), top, duration: pcm.length / rate, pitch };
+    for (let i = 0; i < GW_N / 2; i++) { gw.cos[i] = Math.cos((-2 * Math.PI * i) / GW_N); gw.sin[i] = Math.sin((-2 * Math.PI * i) / GW_N); }
+    return gw;
   }
 
-  /** Wie die Spektrum-Anzeige im Spiel: weich, leicht zusammengedrückt (Wurzel), außen dunkel, innen hell. */
-  function smooth(avg, max) {
-    const n = avg.length;
-    const a = new Float32Array(n), m = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      let s = 0, w = 0, mm = 0;
-      for (let k = -3; k <= 3; k++) {
-        const j = i + k;
-        if (j < 0 || j >= n) continue;
-        const wt = 4 - Math.abs(k);
-        s += avg[j] * wt;
-        w += wt;
-        if (Math.abs(k) <= 1) mm = Math.max(mm, max[j]);
+  /** Betrag je Frequenz eines Blocks ab start (1024 Werte, wie Godot: |FFT| / 1024). */
+  function gwMags(x, start) {
+    const { win, re, im, rev, cos, sin } = gwSetup();
+    for (let i = 0; i < GW_N; i++) { const k = start + i; re[rev[i]] = (k < x.length ? x[k] : 0) * win[i]; im[rev[i]] = 0; }
+    for (let size = 2; size <= GW_N; size <<= 1) {
+      const half = size >> 1, step = GW_N / size;
+      for (let i = 0; i < GW_N; i += size) {
+        for (let j = 0; j < half; j++) {
+          const c = cos[j * step], sn = sin[j * step], a = i + j, b = a + half;
+          const tr = re[b] * c - im[b] * sn, ti = re[b] * sn + im[b] * c;
+          re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+        }
       }
-      a[i] = s / w;
-      m[i] = mm;
     }
-    return { avg: a, max: m };
+    const out = new Float32Array(GW_BINS);
+    for (let i = 0; i < GW_BINS; i++) out[i] = Math.hypot(re[i], im[i]) / GW_BINS;
+    return out;
+  }
+
+  const gwPct = (m) => Math.max(0, Math.min(1, (60 + 20 * Math.log10(m)) / 60)) || 0;
+
+  /** Mittel oder Spitze zwischen zwei Frequenzen, links und rechts als Vektor (wie get_magnitude_for_frequency_range). */
+  function gwRange(blk, f0, f1, max, rate) {
+    let a = Math.trunc((f0 * GW_BINS) / (rate * 0.5)), b = Math.trunc((f1 * GW_BINS) / (rate * 0.5));
+    a = Math.min(GW_BINS - 1, Math.max(0, a));
+    b = Math.min(GW_BINS - 1, Math.max(0, b));
+    if (a > b) [a, b] = [b, a];
+    const L = blk.l, R = blk.r || blk.l;
+    let x = 0, y = 0;
+    for (let i = a; i <= b; i++) {
+      if (max) { if (L[i] > x) x = L[i]; if (R[i] > y) y = R[i]; } else { x += L[i]; y += R[i]; }
+    }
+    if (!max) { x /= b - a + 1; y /= b - a + 1; }
+    return Math.hypot(x, y);
+  }
+
+  /** Werte eines Bildes: [Mittel, Spitze, Tonhöhe] wie SpectrumSampler im Spiel. */
+  function gwFrame(blk, rate) {
+    const avg = Math.floor(gwPct(gwRange(blk, 65.41, 8372, false, rate)) * 255);
+    const max = Math.floor(gwPct(gwRange(blk, 65.41, 8372, true, rate)) * 255);
+    const high = gwPct(gwRange(blk, 8372, 16744, false, rate));
+    let sum = 0, ev = 0, lo = 130.81;
+    for (let d = 0; d < 128; d++) {
+      const hi = ((d + 1) * 8372) / 128;
+      const m = gwPct(gwRange(blk, lo, hi, true, rate));
+      const v = high > m ? Math.floor(high * 255) : Math.floor(m * 128);
+      sum += v;
+      ev += v * d;
+      lo = hi;
+    }
+    return [avg, max, sum ? Math.floor(ev / sum) : 0];
+  }
+
+  /** Wellenform einer Aufnahme oder eines Clips. chans: [links, rechts] (rechts fehlt bei Mono). */
+  function waveData(chans, rate) {
+    const L = chans[0], R = chans[1] || null;
+    const n = Math.max(1, Math.floor((L.length / rate) * 60));
+    const an = { avg: new Uint8Array(n), max: new Uint8Array(n), pitch: new Uint8Array(n), n, duration: L.length / rate };
+    let lastB = -1, vals = null;
+    for (let j = 0; j < n; j++) {
+      // Wie im Spiel: jedes Bild zeigt den zuletzt fertig gemessenen Block
+      const b = Math.floor(((j / 60) * rate) / GW_N) - 1;
+      if (b < 0) continue;
+      if (b !== lastB) {
+        vals = gwFrame({ l: gwMags(L, b * GW_N), r: R ? gwMags(R, b * GW_N) : null }, rate);
+        lastB = b;
+      }
+      an.avg[j] = vals[0]; an.max[j] = vals[1]; an.pitch[j] = vals[2];
+    }
+    return an;
+  }
+
+  /** Während der Aufnahme: Wellenform bis zum aktuellen Stand, Stück für Stück weitergerechnet. */
+  function liveWave() {
+    const L = D.live;
+    const total = Math.max(1, Math.floor((L.pcm.length / L.rate) * 60));
+    L.an ??= { avg: new Uint8Array(total), max: new Uint8Array(total), pitch: new Uint8Array(total), n: 0, duration: 0, lastB: -1, vals: null };
+    const an = L.an;
+    const n = Math.min(total, Math.floor((L.got / L.rate) * 60));
+    for (let j = an.n; j < n; j++) {
+      const b = Math.floor(((j / 60) * L.rate) / GW_N) - 1;
+      if (b >= 0) {
+        if (b !== an.lastB) { an.vals = gwFrame({ l: gwMags(L.pcm, b * GW_N), r: null }, L.rate); an.lastB = b; }
+        an.avg[j] = an.vals[0]; an.max[j] = an.vals[1]; an.pitch[j] = an.vals[2];
+      }
+      an.n = j + 1;
+    }
+    an.duration = an.n / 60;
+    return an;
+  }
+
+  /** Zeichnen wie das Spiel (WaveformDrawer): 512 hoch, Mitte bei 254, 3 Punkte je 1/60 s, dazwischen weich
+   *  übergeblendet; außen die Spitzen (durchscheinend), innen das Mittel, die Tonhöhe als kurzer Strich.
+   *  kind: clip (Original) oder take (Aufnahme). */
+  function paintGame(g, an, until, kind, shift, pps, h) {
+    const n = Math.min(an.n, Math.floor(until * 60));
+    const sx = pps / 180, sy = h / 512, x0 = shift * pps, bw = Math.max(1, sx + 0.35);
+    const pass = (arr, color) => {
+      g.fillStyle = color;
+      const line = (x, v) => { if (v > 0) g.fillRect(x0 + x * sx, (254 - v) * sy, bw, v * 2 * sy); };
+      for (let i = 0; i < n; i++) {
+        const cur = arr[i];
+        line(i * 3 + 1, cur);
+        if (i > 0) line(i * 3, Math.ceil((arr[i - 1] + cur * 2) / 3));
+        if (i < n - 1) line(i * 3 + 2, Math.ceil((arr[i + 1] + cur * 2) / 3));
+      }
+    };
+    pass(an.max, css(`--${kind}-out`));
+    pass(an.avg, css(`--${kind}-in`));
+    g.fillStyle = css(`--${kind}-pitch`);
+    for (let i = 0; i < n; i++) {
+      if (an.pitch[i]) g.fillRect(x0 + i * 3 * sx, (512 - an.pitch[i] * 1.333) * sy, Math.max(1, 3 * sx), Math.max(1.5, 4 * sy));
+    }
+  }
+
+  /** Im Spiel-Stil wird wie im Spiel addiert (Magenta und Cyan übereinander werden hell), im schlichten Stil nicht. */
+  const additive = () => document.documentElement.dataset.style !== 'simple';
+
+  function channels(buf) {
+    return buf.numberOfChannels > 1 ? [buf.getChannelData(0), buf.getChannelData(1)] : [buf.getChannelData(0)];
   }
 
   async function clipAnalysis(u) {
     if (D.analysis.has(u)) return D.analysis.get(u);
     const buf = await getBuffer(u);
-    const a = waveData(mixDown(buf), buf.sampleRate);
+    const a = waveData(channels(buf), buf.sampleRate);
     D.analysis.set(u, a);
     return a;
   }
@@ -414,25 +617,17 @@
     D.mode = 'record';
     D.take = null;
     D.offset = 0;
-    D.live = { avg: [], max: [], pitch: [], top: 0.05 };
-    const frameLen = rate / FPS;
-    let acc = 0, accE = 0, accM = 0;
+    D.live = { pcm, rate, got: 0, an: null };
     D.onChunk = (frame, data) => {
       for (let i = 0; i < data.length; i++) {
         const pos = frame + i - first;
         if (pos < 0 || pos >= len) continue;
-        pcm[pos] = data[i];
+        // Übersteuert liefern manche Mikrofone Werte über 1 oder gar ungültige: begrenzen, sonst fehlt die Wellenform
+        const v = data[i];
+        pcm[pos] = v > 1 ? 1 : v < -1 ? -1 : v === v ? v : 0;
         got = Math.max(got, pos + 1);
-        const v = Math.abs(data[i]);
-        accE += v * v;
-        if (v > accM) accM = v;
-        if (++acc >= frameLen) {
-          D.live.avg.push(Math.sqrt(accE / acc));
-          D.live.max.push(accM);
-          D.live.top = Math.max(D.live.top, accM);
-          acc = 0; accE = 0; accM = 0;
-        }
       }
+      if (D.live) D.live.got = got;
     };
     recNode.setOn(true);
     // Beim Aufnehmen still (am Handy Standard): sonst nimmt das Mikro die Originalstimme mit auf
@@ -456,7 +651,7 @@
     D.attempts++;
     const take = pcm.subarray(0, Math.max(got, 1));
     if (micSilent(take)) toast(t(MIC_SILENT), 10000);
-    D.take = { pcm: take, rate, an: waveData(take, rate) };
+    D.take = { pcm: take, rate, an: waveData([take], rate) };
     D.live = null;
     D.mode = 'idle';
     wsSend({ type: 'dub.activity', what: 'review' });
@@ -559,6 +754,70 @@
     renderRemote();
   }
 
+  /* ================= Hintergrund wie im Spiel =================
+   * Im Spiel liegt hinter dem Dub-Modus eine Kachel aus zwei Streifen (hell und etwas dunkler, stark abgedunkelt),
+   * die ein Shader schräg durchs Bild schiebt (eine Kachel pro Sekunde, Richtung 1 : 0,2) und zum Rand hin wölbt.
+   * Hier dasselbe als kleiner WebGL-Shader. Bei „weniger Bewegung“ im System steht er still. */
+  const BG_FRAG = `precision mediump float;
+uniform vec2 res; uniform float time; uniform float tile;
+void main() {
+  vec2 q = vec2(gl_FragCoord.x, res.y - gl_FragCoord.y) / tile - res / tile / 2.0;
+  q.y -= q.y * q.x * q.x * 0.013 / 648.0 * 32.0;
+  q += vec2(1.0, 0.2) * time;
+  float band = fract(q.y) < 0.5 ? 1.0 : 225.0 / 255.0;
+  gl_FragColor = vec4(vec3(band * 0.133196), 1.0);
+}`;
+  const BG = { gl: null, raf: 0, on: false, t0: 0 };
+  function backdrop(on) {
+    if (on && BG.on && BG.raf) return;   // läuft schon
+    BG.on = on;
+    cancelAnimationFrame(BG.raf);
+    BG.raf = 0;
+    if (!on) return;
+    const box = $d('.dub-backdrop');
+    if (!BG.gl) {
+      const cv = document.createElement('canvas');
+      const gl = cv.getContext('webgl', { antialias: false, alpha: false });
+      if (!gl) return;   // bleibt bei den stehenden Streifen aus dub.css
+      const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+      const prog = gl.createProgram();
+      gl.attachShader(prog, sh(gl.VERTEX_SHADER, 'attribute vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }'));
+      gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, BG_FRAG));
+      gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+      gl.useProgram(prog);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, 'p');
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      BG.gl = gl;
+      BG.cv = cv;
+      BG.u = { res: gl.getUniformLocation(prog, 'res'), time: gl.getUniformLocation(prog, 'time'), tile: gl.getUniformLocation(prog, 'tile') };
+      BG.t0 = performance.now();
+    }
+    if (BG.cv.parentNode !== box) box.append(BG.cv);
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const frame = (now) => {
+      if (!BG.on) return;
+      const { gl, cv, u } = BG;
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      const w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+      BG.raf = 0;
+      if (!w || !h) return;   // ausgeblendet (schlichter Stil): nichts zeichnen, beim nächsten Einblenden geht es weiter
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
+      // Im Spiel ist eine Kachel 32 von 1152 x 648 Punkten: hier genauso groß im Verhältnis zum Fenster
+      const tile = Math.max(cv.clientWidth / 36, cv.clientHeight / 20.25) * dpr;
+      gl.uniform2f(u.res, w, h);
+      gl.uniform1f(u.tile, tile);
+      gl.uniform1f(u.time, still ? 0 : (now - BG.t0) / 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (!still && !document.hidden) BG.raf = requestAnimationFrame(frame);
+    };
+    BG.raf = requestAnimationFrame(frame);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && BG.on) backdrop(true); });
+
   /* ================= Rauschen zwischen den Zeilen ================= */
 
   let noiseRaf = 0;
@@ -595,25 +854,6 @@
     return getComputedStyle($d('.dub-studio')).getPropertyValue(name).trim() || '#fff';
   }
 
-  /** Lautstärke als Balken wie im Spiel: außen die Spitzen dunkel, innen der Mittelwert hell. */
-  function paintBars(g, data, until, colIn, colOut, shift, pps, mid, half) {
-    const n = Math.min(data.avg.length, Math.floor(until * FPS));
-    const top = Math.max(data.top, 0.02);
-    const bw = Math.max(1, pps / FPS + 0.6);
-    const outer = (i) => Math.sqrt(Math.min(1, data.max[i] / top)) * half * 0.9;
-    const inner = (i) => Math.min(outer(i) * 0.86, Math.sqrt(Math.min(1, (data.avg[i] * 2.2) / top)) * half * 0.9 * 0.8);
-    g.fillStyle = colOut;
-    for (let i = 0; i < n; i++) {
-      const a = outer(i);
-      if (a > 1.5) g.fillRect((i / FPS + shift) * pps, mid - a, bw, a * 2);
-    }
-    g.fillStyle = colIn;
-    for (let i = 0; i < n; i++) {
-      const a = inner(i);
-      if (a > 1.5) g.fillRect((i / FPS + shift) * pps, mid - a, bw, a * 2);
-    }
-  }
-
   /* Einstellung „Wellenformen der Mitspieler: für alle“: unter der Wellenform steht die zuletzt fertige
    * Zeile eines anderen, Clip und Aufnahme übereinander (so wie es sonst nur das Spiel am PC zeigt). */
   function renderLast(d) {
@@ -641,7 +881,7 @@
       // Zwei Leute in einer Zeile: zusammen als eine Wellenform
       const pcm = new Float32Array(Math.max(...bufs.map((b) => b.length)));
       for (const b of bufs) { const m = mixDown(b); for (let i = 0; i < m.length; i++) pcm[i] += m[i]; }
-      const an = waveData(pcm, bufs[0].sampleRate);
+      const an = waveData([pcm], bufs[0].sampleRate);
       const clipAn = clip?.audio ? await clipAnalysis(clip.audio).catch(() => null) : null;
       if (D.last?.key !== k) return;
       Object.assign(D.last, { an, clipAn });
@@ -661,8 +901,10 @@
     g.clearRect(0, 0, w, h);
     const { an, clipAn } = D.last;
     const pps = w / Math.max(0.5, (clipAn?.duration || an.duration) + 0.05);
-    if (clipAn) paintBars(g, clipAn, clipAn.duration, css('--clip-in'), css('--clip-out'), 0, pps, h / 2, h / 2 - 2);
-    paintBars(g, an, an.duration, css('--take-in'), css('--take-out'), 0, pps, h / 2, h / 2 - 2);
+    if (additive()) g.globalCompositeOperation = 'lighter';
+    if (clipAn) paintGame(g, clipAn, clipAn.duration, 'clip', 0, pps, h);
+    paintGame(g, an, an.duration, 'take', 0, pps, h);
+    g.globalCompositeOperation = 'source-over';
   }
 
   function drawWave() {
@@ -686,34 +928,18 @@
     const mid = h / 2;
     const half = h / 2 - 4;
 
-    const bars = (data, until, colIn, colOut, shift) => paintBars(g, data, until, colIn, colOut, shift, pps, mid, half);
-    const dots = (p, until, col, shift) => {
-      if (!p) return;
-      g.fillStyle = col;
-      const band = h * 0.26;
-      for (let i = 0; i < p.midi.length; i++) {
-        const tt = i * p.hop;
-        if (tt > until) break;
-        const m = p.midi[i];
-        if (isNaN(m)) continue;
-        const y = h - 3 - Math.max(0, Math.min(1, (m - 38) / 50)) * band;
-        g.fillRect((tt + shift) * pps, y, Math.max(2, pps * p.hop * 0.6), 2);
-      }
-    };
-
+    if (additive()) g.globalCompositeOperation = 'lighter';
     if (an) {
       const until = D.shownClipDrawn ? an.duration : D.drawUntil;
-      bars(an, until, css('--clip-in'), css('--clip-out'), 0);
-      dots(an.pitch, until, css('--clip-pitch'), 0);
+      paintGame(g, an, until, 'clip', 0, pps, h);
     }
     if (D.live) {
-      const n = D.live.avg.length;
-      const data = { ...smooth(D.live.avg, D.live.max), top: Math.max(0.05, D.live.top) };
-      bars(data, n / FPS, css('--take-in'), css('--take-out'), 0);
+      const lv = liveWave();
+      paintGame(g, lv, lv.duration, 'take', 0, pps, h);
     } else if (D.take) {
-      bars(D.take.an, D.take.an.duration, css('--take-in'), css('--take-out'), D.offset);
-      dots(D.take.an.pitch, D.take.an.duration, css('--take-pitch'), D.offset);
+      paintGame(g, D.take.an, D.take.an.duration, 'take', D.offset, pps, h);
     }
+    g.globalCompositeOperation = 'source-over';
     // Mittellinie und Abspielbalken
     g.fillStyle = document.documentElement.dataset.style === 'simple' ? '#2c313c' : '#fff';
     g.fillRect(0, Math.round(mid) - 1, w, 2);
@@ -971,6 +1197,7 @@
     $id('studio').hidden = !studio;
     document.body.classList.toggle('dub-dark', studio);
     $d('.dub-backdrop').hidden = !studio;
+    backdrop(studio);
     $('#app').classList.add('dub-wide');
     if (d.phase !== D.phaseShown) {
       D.phaseShown = d.phase;
@@ -1570,8 +1797,10 @@
     const watching = !!D.watch;
     const video = $id('video');
     if (D.view?.video && D.pack) {
-      const src = auth(`/api/rooms/${S.code}/dub/video`) + `&v=${D.version}`;
-      if (video.dataset.src !== src && ['ready', 'original'].includes(d.video.status)) {
+      // Aus dem Zwischenspeicher, sonst vom Server (und nebenher speichern)
+      const src = D.videoUrl || auth(`/api/rooms/${S.code}/dub/video`) + `&v=${D.version}`;
+      if (!D.videoUrl) saveVideo();
+      if (video.dataset.src !== src && (D.videoUrl || ['ready', 'original'].includes(d.video.status))) {
         video.dataset.src = src;
         video.src = src;
         video.load();
@@ -1641,25 +1870,16 @@
     try {
       const an = await clipAnalysis(clip.audio);
       const g = cv.getContext('2d');
-      const w = cv.width, h = cv.height, mid = h / 2;
-      const draw = (data, colIn, colOut) => {
-        const top = Math.max(data.top, 0.02);
-        const pps = w / Math.max(0.5, an.duration + 0.05);
-        for (let i = 0; i < data.avg.length; i++) {
-          const x = (i / FPS) * pps;
-          const a = Math.min(1, data.max[i] / top) * (h / 2 - 2);
-          g.fillStyle = colOut;
-          g.fillRect(x, mid - a, Math.max(1, pps / FPS + 0.5), a * 2);
-          const b = Math.min(a, (data.avg[i] / top) * (h / 2) * 1.7);
-          g.fillStyle = colIn;
-          g.fillRect(x, mid - b, Math.max(1, pps / FPS + 0.5), b * 2);
-        }
-      };
-      draw(an, css('--clip-in'), css('--clip-out'));
+      const w = cv.width, h = cv.height;
+      const pps = w / Math.max(0.5, an.duration + 0.05);
+      if (additive()) g.globalCompositeOperation = 'lighter';
+      paintGame(g, an, an.duration, 'clip', 0, pps, h);
       for (const x of takes) {
         const buf = await takeBuffer(x);
-        draw(waveData(buf.getChannelData(0), buf.sampleRate), css('--take-in'), css('--take-out'));
+        const tk = waveData(channels(buf), buf.sampleRate);
+        paintGame(g, tk, tk.duration, 'take', 0, pps, h);
       }
+      g.globalCompositeOperation = 'source-over';
     } catch {}
   }
 
