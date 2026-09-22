@@ -455,6 +455,7 @@
     D.rec = null;
     D.attempts++;
     const take = pcm.subarray(0, Math.max(got, 1));
+    if (micSilent(take)) toast(t(MIC_SILENT), 10000);
     D.take = { pcm: take, rate, an: waveData(take, rate) };
     D.live = null;
     D.mode = 'idle';

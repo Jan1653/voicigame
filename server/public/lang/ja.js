@@ -302,6 +302,7 @@ window.VG_LANG.ja = { strings: {
   'Dunkler Stil': 'ダークスタイル',
   'Entfernen': '外す',
   '{} wirklich entfernen?': '{} を本当に外しますか？',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'マイクから音が入っていません。スマホで通話中ですか（Discord など）？通話を終えるかマイクを解放して、ページを再読み込みしてください。',
   'Zeilen vom PC: {} von {}': 'PCからのセリフ: {} / {}',
   'Das Video ist noch nicht fertig.': '動画はまだ準備中です。',
   'Die erste Zeile kommt gerade vom PC.': '最初のセリフがPCから届いています。',

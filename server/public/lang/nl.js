@@ -302,6 +302,7 @@ window.VG_LANG.nl = { strings: {
   'Dunkler Stil': 'Donkere stijl',
   'Entfernen': 'Verwijderen',
   '{} wirklich entfernen?': '{} echt verwijderen?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Je microfoon vangt geen geluid op. Loopt er een gesprek op je telefoon, bijvoorbeeld Discord? Beëindig het of geef de microfoon vrij en laad de pagina opnieuw.',
   'Zeilen vom PC: {} von {}': 'Zinnen van de pc: {} van {}',
   'Das Video ist noch nicht fertig.': 'De video is nog niet klaar.',
   'Die erste Zeile kommt gerade vom PC.': 'De eerste zin komt net van de pc.',

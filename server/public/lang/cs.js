@@ -302,6 +302,7 @@ window.VG_LANG.cs = { strings: {
   'Dunkler Stil': 'Tmavý styl',
   'Entfernen': 'Odebrat',
   '{} wirklich entfernen?': 'Opravdu odebrat {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Tvůj mikrofon nezachytává žádný zvuk. Běží v telefonu hovor, třeba na Discordu? Ukonči ho nebo uvolni mikrofon a načti stránku znovu.',
   'Zeilen vom PC: {} von {}': 'Repliky z PC: {} z {}',
   'Das Video ist noch nicht fertig.': 'Video ještě není hotové.',
   'Die erste Zeile kommt gerade vom PC.': 'První replika právě jde z PC.',

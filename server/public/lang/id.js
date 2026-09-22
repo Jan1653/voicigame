@@ -302,6 +302,7 @@ window.VG_LANG.id = { strings: {
   'Dunkler Stil': 'Gaya gelap',
   'Entfernen': 'Keluarkan',
   '{} wirklich entfernen?': 'Yakin keluarkan {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Mikrofonmu tidak menangkap suara. Apakah ada panggilan di ponselmu, misalnya Discord? Akhiri atau bebaskan mikrofon, lalu muat ulang halaman.',
   'Zeilen vom PC: {} von {}': 'Baris dari PC: {} dari {}',
   'Das Video ist noch nicht fertig.': 'Videonya belum siap.',
   'Die erste Zeile kommt gerade vom PC.': 'Baris pertama sedang datang dari PC.',

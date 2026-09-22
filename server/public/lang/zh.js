@@ -302,6 +302,7 @@ window.VG_LANG.zh = { strings: {
   'Dunkler Stil': '深色风格',
   'Entfernen': '移除',
   '{} wirklich entfernen?': '确定要移除 {} 吗？',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': '你的麦克风没有收到声音。手机上是否正在通话，例如 Discord？请结束通话或释放麦克风，然后刷新页面。',
   'Zeilen vom PC: {} von {}': '来自电脑的台词：{} / {}',
   'Das Video ist noch nicht fertig.': '视频还没准备好。',
   'Die erste Zeile kommt gerade vom PC.': '第一句台词正从电脑传来。',

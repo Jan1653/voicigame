@@ -302,6 +302,7 @@ window.VG_LANG.tr = { strings: {
   'Dunkler Stil': 'Koyu stil',
   'Entfernen': 'Çıkar',
   '{} wirklich entfernen?': '{} gerçekten çıkarılsın mı?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Mikrofonun ses almıyor. Telefonunda bir arama mı var, örneğin Discord? Aramayı bitir ya da mikrofonu serbest bırak ve sayfayı yenile.',
   'Zeilen vom PC: {} von {}': 'PC\'den replikler: {} / {}',
   'Das Video ist noch nicht fertig.': 'Video henüz hazır değil.',
   'Die erste Zeile kommt gerade vom PC.': 'İlk replik şu anda PC\'den geliyor.',

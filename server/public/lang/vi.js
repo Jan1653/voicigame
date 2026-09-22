@@ -302,6 +302,7 @@ window.VG_LANG.vi = { strings: {
   'Dunkler Stil': 'Kiểu tối',
   'Entfernen': 'Xóa',
   '{} wirklich entfernen?': 'Thật sự xóa {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Micro của bạn không thu được âm thanh. Điện thoại có đang trong cuộc gọi không, ví dụ Discord? Hãy kết thúc hoặc giải phóng micro rồi tải lại trang.',
   'Zeilen vom PC: {} von {}': 'Lời thoại từ PC: {} trên {}',
   'Das Video ist noch nicht fertig.': 'Video vẫn chưa xong.',
   'Die erste Zeile kommt gerade vom PC.': 'Lời thoại đầu tiên đang được gửi từ PC.',

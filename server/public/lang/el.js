@@ -302,6 +302,7 @@ window.VG_LANG.el = { strings: {
   'Dunkler Stil': 'Σκούρο στυλ',
   'Entfernen': 'Αφαίρεση',
   '{} wirklich entfernen?': 'Σίγουρα να αφαιρεθεί ο/η {};',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Το μικρόφωνό σου δεν πιάνει ήχο. Τρέχει κλήση στο κινητό, για παράδειγμα στο Discord; Τερμάτισέ τη ή απελευθέρωσε το μικρόφωνο και φόρτωσε ξανά τη σελίδα.',
   'Zeilen vom PC: {} von {}': 'Ατάκες από τον υπολογιστή: {} από {}',
   'Das Video ist noch nicht fertig.': 'Το βίντεο δεν είναι ακόμα έτοιμο.',
   'Die erste Zeile kommt gerade vom PC.': 'Η πρώτη ατάκα έρχεται από τον υπολογιστή.',

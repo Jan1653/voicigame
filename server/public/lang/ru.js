@@ -302,6 +302,7 @@ window.VG_LANG.ru = { strings: {
   'Dunkler Stil': 'Тёмный стиль',
   'Entfernen': 'Убрать',
   '{} wirklich entfernen?': 'Точно убрать {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Микрофон не передаёт звук. На телефоне идёт звонок, например в Discord? Заверши его или освободи микрофон и перезагрузи страницу.',
   'Zeilen vom PC: {} von {}': 'Реплики с ПК: {} из {}',
   'Das Video ist noch nicht fertig.': 'Видео ещё не готово.',
   'Die erste Zeile kommt gerade vom PC.': 'Первая реплика уже идёт с ПК.',

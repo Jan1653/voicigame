@@ -302,6 +302,7 @@ window.VG_LANG.pl = { strings: {
   'Dunkler Stil': 'Ciemny styl',
   'Entfernen': 'Usuń',
   '{} wirklich entfernen?': 'Na pewno usunąć {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Twój mikrofon nie przekazuje dźwięku. Czy na telefonie trwa rozmowa, na przykład na Discordzie? Zakończ ją albo zwolnij mikrofon i odśwież stronę.',
   'Zeilen vom PC: {} von {}': 'Kwestie z PC: {} z {}',
   'Das Video ist noch nicht fertig.': 'Film jeszcze nie jest gotowy.',
   'Die erste Zeile kommt gerade vom PC.': 'Pierwsza kwestia właśnie idzie z PC.',

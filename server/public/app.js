@@ -435,6 +435,7 @@ async function record(turnId, seconds, countdown, pad = 0) {
   renderTurn();
   try {
     const { blob, pcm, rate } = await toWav(new Blob(chunks, { type: mr.mimeType || mimeType || 'audio/webm' }), pad);
+    if (micSilent(pcm)) toast(tr(MIC_SILENT), 10000);
     const take = analyze(pad ? pcm.subarray(Math.round(pad * rate)) : pcm, rate);
     const target = await getAnalysis(clipId);
     const score = target ? scoreTake(target, take) : null;
@@ -1318,12 +1319,20 @@ function renderEnd() {
 }
 
 let toastTimer;
-function toast(text) {
+function toast(text, ms = 3000) {
   const t = $('#toast');
   t.textContent = text;
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), 3000);
+  toastTimer = setTimeout(() => (t.hidden = true), ms);
+}
+
+/** Kam vom Mikrofon gar nichts an (reine Stille)? Meist hält dann ein Anruf auf dem Handy das Mikrofon. */
+const MIC_SILENT = 'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.';
+function micSilent(pcm) {
+  let m = 0;
+  for (let i = 0; i < pcm.length; i++) { const v = Math.abs(pcm[i]); if (v > m) m = v; }
+  return m < 0.0005;
 }
 
 // Automatisch wieder rein, wenn man schon in diesem Raum war

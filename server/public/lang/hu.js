@@ -302,6 +302,7 @@ window.VG_LANG.hu = { strings: {
   'Dunkler Stil': 'Sötét stílus',
   'Entfernen': 'Eltávolítás',
   '{} wirklich entfernen?': 'Biztosan eltávolítod: {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'A mikrofonod nem vesz fel hangot. Hívás fut a telefonon, például Discordon? Fejezd be, vagy engedd el a mikrofont, és töltsd újra az oldalt.',
   'Zeilen vom PC: {} von {}': 'Sorok a gépről: {} / {}',
   'Das Video ist noch nicht fertig.': 'A videó még nincs kész.',
   'Die erste Zeile kommt gerade vom PC.': 'Az első sor épp jön a gépről.',

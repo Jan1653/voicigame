@@ -302,6 +302,7 @@ window.VG_LANG.sr = { strings: {
   'Dunkler Stil': 'Tamni stil',
   'Entfernen': 'Ukloni',
   '{} wirklich entfernen?': 'Stvarno ukloniti {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Tvoj mikrofon ne hvata nikakav zvuk. Da li je na telefonu u toku poziv, na primer Discord? Završi ga ili oslobodi mikrofon i ponovo učitaj stranicu.',
   'Zeilen vom PC: {} von {}': 'Replike sa PC-ja: {} od {}',
   'Das Video ist noch nicht fertig.': 'Video još nije spreman.',
   'Die erste Zeile kommt gerade vom PC.': 'Prva replika upravo stiže sa PC-ja.',

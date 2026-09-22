@@ -302,6 +302,7 @@ window.VG_LANG.sk = { strings: {
   'Dunkler Stil': 'Tmavý štýl',
   'Entfernen': 'Odobrať',
   '{} wirklich entfernen?': 'Naozaj odobrať {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Tvoj mikrofón nezachytáva žiadny zvuk. Beží v telefóne hovor, napríklad na Discorde? Ukonči ho alebo uvoľni mikrofón a načítaj stránku znova.',
   'Zeilen vom PC: {} von {}': 'Repliky z PC: {} z {}',
   'Das Video ist noch nicht fertig.': 'Video ešte nie je hotové.',
   'Die erste Zeile kommt gerade vom PC.': 'Prvá replika práve ide z PC.',

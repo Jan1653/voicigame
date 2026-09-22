@@ -302,6 +302,7 @@ window.VG_LANG.ro = { strings: {
   'Dunkler Stil': 'Stil întunecat',
   'Entfernen': 'Scoate',
   '{} wirklich entfernen?': 'Sigur îl scoți pe {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Microfonul tău nu captează niciun sunet. Ai un apel pe telefon, de exemplu pe Discord? Închide-l sau eliberează microfonul și reîncarcă pagina.',
   'Zeilen vom PC: {} von {}': 'Replici de la PC: {} din {}',
   'Das Video ist noch nicht fertig.': 'Videoclipul nu e gata încă.',
   'Die erste Zeile kommt gerade vom PC.': 'Prima replică vine acum de la PC.',

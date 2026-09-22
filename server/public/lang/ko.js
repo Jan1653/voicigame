@@ -302,6 +302,7 @@ window.VG_LANG.ko = { strings: {
   'Dunkler Stil': '다크 스타일',
   'Entfernen': '내보내기',
   '{} wirklich entfernen?': '{}님을 정말 내보낼까요?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': '마이크에 소리가 들어오지 않아요. 휴대폰에서 통화 중인가요(예: Discord)? 통화를 끝내거나 마이크를 풀어 준 뒤 페이지를 새로고침하세요.',
   'Zeilen vom PC: {} von {}': 'PC에서 오는 대사: {} / {}',
   'Das Video ist noch nicht fertig.': '영상이 아직 준비되지 않았어.',
   'Die erste Zeile kommt gerade vom PC.': '첫 대사가 PC에서 오는 중이야.',

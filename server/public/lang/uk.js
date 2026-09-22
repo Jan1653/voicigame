@@ -302,6 +302,7 @@ window.VG_LANG.uk = { strings: {
   'Dunkler Stil': 'Темний стиль',
   'Entfernen': 'Прибрати',
   '{} wirklich entfernen?': 'Точно прибрати {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Мікрофон не передає звук. На телефоні триває дзвінок, наприклад у Discord? Заверши його або звільни мікрофон і перезавантаж сторінку.',
   'Zeilen vom PC: {} von {}': 'Репліки з ПК: {} з {}',
   'Das Video ist noch nicht fertig.': 'Відео ще не готове.',
   'Die erste Zeile kommt gerade vom PC.': 'Перша репліка вже йде з ПК.',

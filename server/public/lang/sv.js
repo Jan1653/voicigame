@@ -302,6 +302,7 @@ window.VG_LANG.sv = { strings: {
   'Dunkler Stil': 'Mörk stil',
   'Entfernen': 'Ta bort',
   '{} wirklich entfernen?': 'Vill du verkligen ta bort {}?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'Din mikrofon tar inte upp något ljud. Pågår ett samtal i telefonen, till exempel Discord? Avsluta det eller frigör mikrofonen och ladda om sidan.',
   'Zeilen vom PC: {} von {}': 'Repliker från datorn: {} av {}',
   'Das Video ist noch nicht fertig.': 'Videon är inte klar än.',
   'Die erste Zeile kommt gerade vom PC.': 'Första repliken är på väg från datorn.',

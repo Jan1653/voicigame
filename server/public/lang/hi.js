@@ -302,6 +302,7 @@ window.VG_LANG.hi = { strings: {
   'Dunkler Stil': 'डार्क स्टाइल',
   'Entfernen': 'हटाओ',
   '{} wirklich entfernen?': '{} को सच में हटाना है?',
+  'Dein Mikrofon liefert keinen Ton. Läuft auf dem Handy ein Anruf, zum Beispiel Discord? Beende ihn oder gib das Mikrofon frei und lade die Seite neu.': 'तुम्हारा माइक्रोफ़ोन कोई आवाज़ नहीं ले रहा। क्या फ़ोन पर कोई कॉल चल रही है, जैसे Discord? उसे खत्म करो या माइक्रोफ़ोन खाली करो और पेज फिर से लोड करो।',
   'Zeilen vom PC: {} von {}': 'पीसी से लाइनें: {} में से {}',
   'Das Video ist noch nicht fertig.': 'वीडियो अभी तैयार नहीं है।',
   'Die erste Zeile kommt gerade vom PC.': 'पहली लाइन अभी पीसी से आ रही है।',
