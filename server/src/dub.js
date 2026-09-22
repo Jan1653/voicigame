@@ -6,6 +6,7 @@ import { readPack, orderClips, extractPackZip, writeZip, wavInfo, safeName } fro
 import { checkStorage, storageAdd, storageAddFile, storageLeft } from './limits.js';
 import { ffmpeg, findFfmpeg, probe } from './ffjobs.js';
 import { count as countStat, observe as observeStat } from './stats.js';
+import * as packCache from './packcache.js';
 
 /* =====================================================================
  * Dub-Modus (Synchronisieren): ein Video, jeder spricht die Zeilen seiner Figuren.
@@ -114,6 +115,7 @@ export class DubSession {
     this.wantTimer = null;
     this.exportPending = false;        // Export gewünscht, das Pack ist aber noch nicht ganz auf dem Server
     this.exportDropTimer = null;
+    this.cached = false;               // Pack kam aus dem Speicher des Servers, es wurde nichts hochgeladen
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -210,6 +212,23 @@ export class DubSession {
     this.packStatus = { status: 'uploading', error: null, note: null };
     this.fileInfo = fileInfoOf([...files].map(([name, size]) => ({ name, size })));
     this.exportPending = false;
+    // War dieses Pack schon einmal hier? Dann liegt alles bereit: nichts hochladen, nichts umwandeln
+    this.cached = packCache.has(dataDirOf(this.room), this.fileInfo.fp, this.fileInfo.files);
+    if (this.cached) {
+      const got = packCache.take(dataDirOf(this.room), this.fileInfo.fp, this.packDir(), path.join(this.dir, 'web'));
+      for (const f of this.plan.files.keys()) this.plan.done.add(f);
+      this.plan.complete = true;
+      this.plan.ready = -1;
+      if (got.video) {
+        this.video = { status: 'ready', pct: 1, file: got.video, mime: 'video/mp4', duration: 0, height: 0, codec: 'h264', h264: true };
+        probe(got.video).then((i) => {
+          if (!i) return;
+          this.video.duration = i.duration || 0;
+          this.video.height = i.video?.height || 0;
+          this.onChange();
+        }).catch(() => {});
+      }
+    }
     // Neues Pack: alle bekommen wieder die Frist, um zu melden, dass sie es schon haben
     const now = Date.now();
     for (const pl of this.room.players.values()) if (pl.kind === 'phone') this.seenAt.set(pl.id, now);
@@ -338,6 +357,8 @@ export class DubSession {
     countStat('packs');
     observeStat('pack_mb', this.upBytes / MB);
     observeStat('pack_lines', this.performed().length);
+    // Fertig hochgeladen: merken, damit dasselbe Pack beim nächsten Mal gar nicht mehr hochmuss
+    packCache.store(dataDirOf(this.room), this.fileInfo.fp, this.packDir(), this.video.h264 ? this.video.file : null);
     this.waitClip = null;
     this.advance();
     if (this.pack?.video && this.video.status === 'none') this.prepareVideo().catch((e) => console.warn('Video:', e.message));
@@ -408,6 +429,7 @@ export class DubSession {
     }
     this.packStatus = { status: 'ready', error: null, note: null };
     countStat('packs');
+    packCache.store(dataDirOf(this.room), this.fileInfo.fp, dest, null);
     observeStat('pack_mb', folderBytes(dest) / MB);
     observeStat('pack_lines', pack.clips.length);
     this.prepareVideo().catch((e) => console.warn('Video:', e.message));
@@ -492,7 +514,7 @@ export class DubSession {
     let last = 0;
     try {
       await ffmpeg(['-i', src, '-map', '0:v:0', '-an', '-vf', "scale=-2:'trunc(min(720,ih)/2)*2',format=yuv420p",
-        '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '25', '-movflags', '+faststart', out], {
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '24', '-movflags', '+faststart', out], {
         duration: this.video.duration || 0,
         timeoutMs: 30 * 60 * 1000,
         key: 'video:' + out,
@@ -504,6 +526,7 @@ export class DubSession {
       if (version !== this.version) return;
       storageAddFile(out);
       Object.assign(this.video, { status: 'ready', pct: 1, file: out, mime: 'video/mp4', h264: true });
+      packCache.storeVideo(dataDirOf(this.room), this.fileInfo.fp, out);   // einmal umwandeln reicht für immer
     } catch (err) {
       if (version !== this.version) return;
       console.warn('Video-Umwandlung fehlgeschlagen:', err.message);
@@ -1356,7 +1379,8 @@ export function installDub(app, ctx) {
     try {
       a.dub.beginUpload(a.host && req.body?.stream ? req.body : null);
       broadcastState(a.room);
-      res.json({ ok: true });
+      // have: der Server kennt dieses Pack schon, der PC braucht nichts zu schicken
+      res.json({ ok: true, have: !!a.dub.cached });
     } catch (e) {
       res.status(409).json({ error: e.message });
     }

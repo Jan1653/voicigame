@@ -38,7 +38,7 @@ const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replac
 // Je Port ein eigener Ordner: zwei Server auf einem Rechner räumen sich beim Start nicht gegenseitig auf
 const DATA_DIR = process.env.DATA_DIR || path.join(os.tmpdir(), `voicigame-${PORT}`);
 const MB = 1024 ** 2;
-const ROOM_IDLE_MS = 45 * 60 * 1000;     // niemand mehr verbunden
+const ROOM_IDLE_MS = 30 * 60 * 1000;     // niemand mehr verbunden (danach sind auch die Dateien des Raums weg)
 const ROOM_CLOSED_MS = 5 * 60 * 1000;    // Host hat den Raum geschlossen (Handys sehen noch kurz den Hinweis)
 
 fs.mkdirSync(DATA_DIR, { recursive: true });

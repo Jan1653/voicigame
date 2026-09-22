@@ -1,6 +1,11 @@
 import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 
+/** nice gibt es nur auf Linux und macOS. Fehlt es, läuft ffmpeg wie bisher. */
+const NICE = (() => {
+  try { return spawnSync('nice', ['-n', '10', 'true'], { timeout: 5000 }).status === 0 ? 'nice' : ''; } catch { return ''; }
+})();
+
 /**
  * ffmpeg sparsam nutzen: immer nur ein Auftrag gleichzeitig, niedrige Priorität, Zeitlimit.
  * Auf dem Server laufen noch andere Spiele, die sollen nicht ausgebremst werden.
@@ -58,7 +63,10 @@ function pump() {
   const args = ['-hide_banner', '-nostdin', '-y', '-threads', THREADS, ...(opts.duration ? ['-progress', 'pipe:1', '-nostats'] : []), ...job.args];
   let child;
   try {
-    child = spawn(findFfmpeg(), args, { windowsHide: true });
+    // Mit niedriger Priorität: auf einem kleinen Server laufen daneben noch andere Seiten
+    child = NICE
+      ? spawn(NICE, ['-n', '10', findFfmpeg(), ...args], { windowsHide: true })
+      : spawn(findFfmpeg(), args, { windowsHide: true });
   } catch (e) {
     running = null;
     job.reject(e);

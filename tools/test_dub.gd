@@ -197,8 +197,12 @@ func _dub() -> void:
 	while hook._upload_state != "done" and t < 90.0:
 		await _wait(0.5)
 		t += 0.5
-	_check("18 Hochladen", hook._upload_state == "done" and DubHook.test_fail_uploads == 0,
-		"%s nach %.1f s, zwei Stücke absichtlich gescheitert und wiederholt" % [hook._upload_state, t])
+	# Kennt der Server das Pack schon (Pack-Speicher), wird gar nichts hochgeladen: dann bleiben die
+	# absichtlichen Fehlschläge ungenutzt stehen, und das ist genauso richtig.
+	var from_cache: bool = DubHook.test_fail_uploads == 2
+	_check("18 Hochladen", hook._upload_state == "done" and (DubHook.test_fail_uploads == 0 or from_cache),
+		"%s nach %.1f s, %s" % [hook._upload_state, t,
+		"Pack lag schon auf dem Server" if from_cache else "zwei Stücke absichtlich gescheitert und wiederholt"])
 	hook._claim_local("Brian")
 	await _wait(3.0)
 	await _start_when_ready(hook)
