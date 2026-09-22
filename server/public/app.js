@@ -6,6 +6,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // (Canvas, Fenstertitel), muss der Code tr() selbst aufrufen.
 const tr = (s) => (window.t ? window.t(s) : s);
 
+/* Fehler dieser Seite dem Server melden, damit sie im Server-Protokoll auftauchen und man sie beheben kann.
+ * Gesendet wird nur die Meldung und die Stelle im Code, nichts über die Person, und höchstens fünf je Besuch. */
+let sentErrors = 0;
+function reportError(msg, where) {
+  if (sentErrors >= 5 || !msg) return;
+  sentErrors++;
+  const body = JSON.stringify({ msg: String(msg).slice(0, 300), where: String(where || '').slice(0, 120) });
+  try {
+    if (!navigator.sendBeacon?.('/api/log', new Blob([body], { type: 'application/json' }))) {
+      fetch('/api/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+    }
+  } catch {}
+}
+addEventListener('error', (e) => reportError(e.message, `${(e.filename || '').split('/').pop()}:${e.lineno || ''}`));
+addEventListener('unhandledrejection', (e) => reportError(e.reason?.message || e.reason, 'promise'));
+
 /** Name (wird nie übersetzt) plus optionaler Zusatz wie „(du)“, der übersetzt wird. */
 function nameNode(name, extra) {
   const f = document.createDocumentFragment();
