@@ -451,7 +451,9 @@ export class DubSession {
 
   /** Wird gerufen, sobald jemand dazukommt oder meldet, dass ihm etwas fehlt. */
   maybePrepareVideo() {
-    if (this.pack?.video && this.video.status === 'none' && this.needsWebVideo()) {
+    // Erst wenn die Datei wirklich da ist: beim laufenden Hochladen kennt der Server den Namen schon vorher
+    if (this.pack?.video && this.video.status === 'none' && this.needsWebVideo()
+        && fs.existsSync(path.join(this.packDir(), this.pack.video))) {
       this.prepareVideo().catch((e) => console.warn('Video:', e.message));
     }
   }
