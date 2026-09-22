@@ -1002,7 +1002,7 @@ function showView(name) {
 // Unten bei Sprache und Stil. Meldet ab (sonst bleibt man als getrennter Spieler im Raum) und gibt das Mikro frei.
 const leaveBtn = document.createElement('button');
 leaveBtn.type = 'button';
-leaveBtn.className = 'style-toggle page-leave';
+leaveBtn.className = 'page-pill page-leave';
 leaveBtn.textContent = 'Raum verlassen';
 leaveBtn.hidden = true;
 document.querySelector('.page-tools')?.appendChild(leaveBtn);
