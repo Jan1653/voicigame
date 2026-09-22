@@ -85,6 +85,8 @@ export class DubSession {
     this.spectators = new Set();
     this.phase = 'hub';                // hub | playing | paused | results
     this.startedAt = null;             // Beginn der laufenden Dub-Runde (nur für die Statistik)
+    this.plan = null;                  // fortlaufendes Hochladen aus dem Spiel, siehe beginUpload
+    this.waitClip = null;              // Zeile, deren Dateien noch unterwegs sind
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -127,15 +129,151 @@ export class DubSession {
   packDir() { return path.join(this.dir, 'pack'); }
   stagingDir() { return path.join(this.dir, 'staging'); }
 
-  beginUpload() {
+  /** Ordner, in den gerade hochgeladen wird: fortlaufend direkt ins Pack, sonst nebenan. */
+  uploadDir() {
+    return this.plan ? this.packDir() : this.stagingDir();
+  }
+
+  /** Hochladen beginnen.
+   *  Ohne Plan (Browser): alles landet neben dem Pack und wird erst beim Übernehmen gültig.
+   *  Mit Plan (Spiel): das Spiel meldet vorher alle Dateien, ihre Größe und die Reihenfolge.
+   *  Dann entstehen die Zeilen sofort, die Dateien kommen nach und die Runde kann schon starten. */
+  beginUpload(plan = null) {
     if (this.phase !== 'hub') throw new Error('Das Pack kann nur in der Lobby gewechselt werden.');
-    fs.rmSync(this.stagingDir(), { recursive: true, force: true });
-    fs.mkdirSync(this.stagingDir(), { recursive: true });
+    this.plan = null;
+    this.waitClip = null;
+    clearTimeout(this.rescanTimer);
+    this.rescanTimer = null;
+    if (!plan) {
+      fs.rmSync(this.stagingDir(), { recursive: true, force: true });
+      fs.mkdirSync(this.stagingDir(), { recursive: true });
+      this.packStatus = { status: 'uploading', error: null, note: null };
+      return;
+    }
+    const files = new Map();
+    for (const f of Array.isArray(plan.files) ? plan.files.slice(0, 5000) : []) {
+      const name = safeName(f?.name);
+      if (name) files.set(name, Math.max(0, Number(f.size) || 0));
+    }
+    if (!files.size) throw new Error('Es wurde nichts angekündigt.');
+    this.clearTakes();
+    for (const d of ['pack', 'web']) {
+      fs.rmSync(path.join(this.dir, d), { recursive: true, force: true });
+      fs.mkdirSync(path.join(this.dir, d), { recursive: true });
+    }
+    this.plan = {
+      files,
+      done: new Set(),
+      order: (Array.isArray(plan.order) ? plan.order : []).map(String),
+      useAsIs: (Array.isArray(plan.useAsIs) ? plan.useAsIs : []).map(String),
+      durations: Object.fromEntries((Array.isArray(plan.durations) ? plan.durations : [])
+        .map((d) => [String(d?.id), Number(d?.duration) || 0])),
+      title: String(plan.title || '').slice(0, 120),
+      folder: safeName(plan.folder) || null,
+      complete: false,
+      ready: 0,
+    };
+    this.pack = null;
+    this.clips = new Map();
+    this.claims.clear();
+    this.ready.clear();
+    this.version++;
+    this.video = { status: 'none', pct: 0, file: null, mime: null, duration: 0, height: 0, codec: null, h264: false };
     this.packStatus = { status: 'uploading', error: null, note: null };
+    this.rescan();
+  }
+
+  /** Eine Datei ist angekommen. Erst wenn sie vollständig ist, zählt sie (nur beim fortlaufenden Hochladen). */
+  fileArrived(name, bytes) {
+    const p = this.plan;
+    if (!p || p.done.has(name)) return;
+    const want = p.files.get(name);
+    if (want === undefined || bytes < want) return;
+    p.done.add(name);
+    // Das Video zuerst umwandeln: das dauert am längsten und läuft neben dem Rest des Uploads
+    if (this.pack?.video === name || (!this.pack && /^dub_video\./i.test(name))) {
+      this.rescan();
+      if (this.pack?.video === name) this.prepareVideo().catch((e) => console.warn('Video:', e.message));
+      return;
+    }
+    this.scheduleRescan();
+  }
+
+  /** Höchstens ein paar Mal pro Sekunde neu einlesen, sonst kostet jede kleine Datei einen Durchlauf. */
+  scheduleRescan() {
+    if (this.rescanTimer) {
+      this.rescanPending = true;
+      return;
+    }
+    this.rescan();
+    this.rescanTimer = setTimeout(() => {
+      this.rescanTimer = null;
+      if (this.rescanPending) {
+        this.rescanPending = false;
+        this.scheduleRescan();
+      }
+    }, 300);
+  }
+
+  /** Pack aus dem, was schon da ist, neu aufbauen. Zeilen ohne Dateien bleiben „kommt noch“. */
+  rescan() {
+    const p = this.plan;
+    if (!p) return;
+    let pack;
+    try {
+      pack = readPack(this.packDir(), { expect: [...p.files.keys()], done: p.done, durations: p.durations });
+    } catch (e) {
+      return console.warn('Pack lesen:', e.message);
+    }
+    if (!pack.clips.length) return;
+    pack.title = pack.title || p.title || 'Pack';
+    pack.folder = p.folder;
+    this.pack = pack;
+    this.clips = new Map(pack.clips.map((c) => [c.id, c]));
+    const known = p.order.filter((id) => this.clips.has(id));
+    this.orderMode = 'game';
+    this.order = known.concat(pack.clips.map((c) => c.id).filter((id) => !known.includes(id)));
+    this.useAsIs = new Set(p.useAsIs.filter((id) => this.clips.has(id)));
+    for (const id of this.order) if (!known.includes(id)) this.useAsIs.add(id);
+    const ready = this.performed().filter((id) => this.clips.get(id).have).length;
+    this.packStatus = { status: 'ready', error: null, note: null };
+    if (!p.complete) this.packStatus.loading = { have: ready, need: this.performed().length };
+    if (ready !== p.ready) {
+      p.ready = ready;
+      this.orderVersion++;
+    }
+    // Auf eine Zeile gewartet, die jetzt da ist? Dann geht es weiter.
+    if (this.waitClip && this.clipReady(this.waitClip)) {
+      this.waitClip = null;
+      this.advance();
+    }
+    this.onChange();
+  }
+
+  /** Sind die Dateien dieser Zeile da? Ohne fortlaufendes Hochladen immer ja. */
+  clipReady(id) {
+    if (!this.plan || this.plan.complete) return true;
+    return !!this.clips.get(id)?.have;
+  }
+
+  /** Das Spiel hat alles hochgeladen. */
+  finishStream(opts = {}) {
+    if (!this.plan) throw new Error('Es läuft kein fortlaufender Upload.');
+    if (Array.isArray(opts.order) && opts.order.length) this.plan.order = opts.order.map(String);
+    if (Array.isArray(opts.useAsIs)) this.plan.useAsIs = opts.useAsIs.map(String);
+    for (const f of this.plan.files.keys()) this.plan.done.add(f);
+    this.plan.complete = true;
+    this.plan.ready = -1;
+    this.rescan();
+    this.waitClip = null;
+    this.advance();
+    if (this.pack?.video && this.video.status === 'none') this.prepareVideo().catch((e) => console.warn('Video:', e.message));
+    this.onChange();
   }
 
   /** Hochgeladenes Pack übernehmen. opts: {order, useAsIs, orderMode} (vom Spiel: dessen Reihenfolge), reuse: vorhandenes Pack behalten */
   async commit(opts = {}) {
+    if (this.plan) return this.finishStream(opts);
     if (opts.reuse) return this.reuse(opts);
     const staging = this.stagingDir();
     if (!fs.existsSync(staging)) throw new Error('Es wurde nichts hochgeladen.');
@@ -290,7 +428,8 @@ export class DubSession {
         icon: f(this.pack.icon), backing: f(this.pack.backing),
         clips: this.order.map((id) => {
           const c = this.clips.get(id);
-          return { id, caption: c.caption, chars: c.chars, times: c.times, duration: c.duration, image: f(c.image), audio: f(c.audio), useAsIs: this.useAsIs.has(id) };
+          return { id, caption: c.caption, chars: c.chars, times: c.times, duration: c.duration, image: f(c.image), audio: f(c.audio),
+            useAsIs: this.useAsIs.has(id), ready: this.clipReady(id) };
         }),
       },
     };
@@ -423,6 +562,11 @@ export class DubSession {
     if (this.phase !== 'hub') return { ok: false, reason: 'not_in_hub' };
     if (!this.pack || this.packStatus.status !== 'ready') return { ok: false, reason: 'no_pack' };
     if (!this.performed().length) return { ok: false, reason: 'no_lines' };
+    // Fortlaufendes Hochladen: los geht es, sobald das Video und die erste Zeile da sind
+    if (this.plan && !this.plan.complete) {
+      if (!['ready', 'original'].includes(this.video.status)) return { ok: false, reason: 'video_loading' };
+      if (!this.clipReady(this.performed()[0])) return { ok: false, reason: 'pack_loading' };
+    }
     const parts = this.participants();
     if (!parts.length) return { ok: false, reason: 'no_players' };
     const waiting = parts.filter((p) => p.kind === 'phone' && !this.isReady(p.id)).map((p) => p.id);
@@ -476,6 +620,12 @@ export class DubSession {
     }
     if (before !== this.turnIndex) this.activity.clear();
     const t = this.turns[this.turnIndex];
+    // Die Zeile ist noch unterwegs: warten. rescan() macht weiter, sobald sie da ist.
+    if (!this.clipReady(t.clipId)) {
+      this.waitClip = t.clipId;
+      return;
+    }
+    this.waitClip = null;
     // Wer dran ist und gerade nicht verbunden ist: warten (Pause)
     for (const pid of t.recorders) {
       const p = this.room.players.get(pid);
@@ -593,6 +743,7 @@ export class DubSession {
         title: this.pack.title, authors: this.pack.authors, clipCount: this.clips.size, perfCount: this.performed().length,
         hasBacking: !!this.pack.backing,
       } : null,
+      waitClip: this.waitClip,
       video: { status: this.video.status, pct: Math.round(this.video.pct * 100) / 100, duration: this.video.duration },
       orderMode: this.orderMode,
       chrono: this.chrono,
@@ -725,6 +876,7 @@ export class DubSession {
   destroy() {
     this.endRound();
     clearTimeout(this.pauseTimer);
+    clearTimeout(this.rescanTimer);
   }
 }
 
@@ -954,12 +1106,14 @@ export function installDub(app, ctx) {
 
   const r = express.Router();
 
-  // Pack hochladen: beginnen, Dateien einzeln oder eine ZIP-Datei, übernehmen
-  r.post('/:code/dub/pack/begin', (req, res) => {
+  // Pack hochladen: beginnen, Dateien einzeln oder eine ZIP-Datei, übernehmen.
+  // Das Spiel schickt beim Beginnen einen Plan mit (alle Dateien und die Reihenfolge) und darf
+  // dann schon starten, während der Rest noch kommt.
+  r.post('/:code/dub/pack/begin', express.json({ limit: '4mb' }), (req, res) => {
     const a = auth(req, res, { upload: true });
     if (!a) return;
     try {
-      a.dub.beginUpload();
+      a.dub.beginUpload(a.host && req.body?.stream ? req.body : null);
       broadcastState(a.room);
       res.json({ ok: true });
     } catch (e) {
@@ -972,18 +1126,20 @@ export function installDub(app, ctx) {
     if (!a) return;
     const name = safeName(req.query.name);
     if (!name) return res.status(400).json({ error: 'bad_name' });
-    if (!fs.existsSync(a.dub.stagingDir())) return res.status(409).json({ error: 'not_started' });
-    const file = path.join(a.dub.stagingDir(), name);
+    const dir = a.dub.uploadDir();
+    if (!fs.existsSync(dir)) return res.status(409).json({ error: 'not_started' });
+    const file = path.join(dir, name);
     const offset = Math.max(0, Math.floor(Number(req.query.offset) || 0));
     // Stücke müssen lückenlos aneinander passen
     const have = fs.existsSync(file) ? fs.statSync(file).size : 0;
     if (offset && offset !== have) return res.status(409).json({ error: 'bad_offset', have });
     // Grenze für diese Datei: was vom Pack (alle Dateien zusammen) und vom Server noch übrig ist
-    const budget = Math.min(MAX_PACK - (folderBytes(a.dub.stagingDir()) - have), storageLeft(dataDirOf(a.room)));
+    const budget = Math.min(MAX_PACK - (folderBytes(dir) - have), storageLeft(dataDirOf(a.room)));
     if (budget <= 0) return res.status(413).json({ error: 'too_large' });
     try {
       const bytes = await receive(req, file, have + budget, offset);
       storageAdd(bytes - have);
+      a.dub.fileArrived(name, bytes);
       res.json({ ok: true, bytes });
     } catch (e) {
       res.status(e.status || 500).json({ error: e.message });

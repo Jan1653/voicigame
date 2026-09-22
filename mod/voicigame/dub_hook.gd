@@ -45,6 +45,7 @@ var _files: Array = []           # [{name, path, size}]
 var _up_index := 0
 var _up_offset := 0
 var _up_total := 0
+var _plan := {}                  # Ankündigung für den Server: alle Dateien und die Reihenfolge
 var _up_done := 0
 var _upload_state := ""          # "" | wait_hub | uploading | commit | done | error
 var _up_began := false
@@ -238,8 +239,27 @@ func _start_upload() -> void:
 		var size := FileAccess.open(dir + f, FileAccess.READ).get_length() if FileAccess.file_exists(dir + f) else 0
 		_files.append({"name": f, "path": dir + f, "size": size})
 		_up_total += size
-	# Kleine Dateien zuerst, das Video zuletzt
-	_files.sort_custom(func(a, b): return a["size"] < b["size"])
+	# Reihenfolge, damit im Browser so früh wie möglich gespielt werden kann:
+	#   1. Beschreibungen und gemeinsame Bilder (winzig, daraus entstehen alle Zeilen)
+	#   2. das Video (das Umwandeln dauert am längsten und läuft schon, während der Rest kommt)
+	#   3. die Zeilen in Spielreihenfolge, jede mit ihrem Bild
+	var play: Array = order + use_as_is
+	var rank := {}
+	for f in _files:
+		var fname: String = f["name"]
+		var base := fname.get_basename()
+		var ext := fname.get_extension().to_lower()
+		var pos: int = play.find(base)
+		var media := ext in ["ogg", "wav", "mp3", "flac", "m4a", "opus", "aac", "ogv", "mp4", "webm", "mkv", "mov"]
+		if ext in ["ini", "txt", "cfg"] or (pos < 0 and not media):
+			rank[fname] = 0
+		elif base.to_lower() == "dub_video":
+			rank[fname] = 1
+		elif pos >= 0:
+			rank[fname] = 2 + pos
+		else:
+			rank[fname] = 2 + play.size()
+	_files.sort_custom(func(a, b): return rank[a["name"]] < rank[b["name"]])
 	var key := "%s|%d|%d" % [dir, _files.size(), _up_total]
 	var d := _dub()
 	var have_pack = d.get("packStatus", {}).get("status", "") == "ready" if d.get("packStatus") is Dictionary else false
@@ -248,6 +268,14 @@ func _start_upload() -> void:
 		_commit(true)
 		return
 	bridge.set_meta("dub_pack_key", key)
+	# Der Server kennt damit von Anfang an alle Zeilen und kann freigeben, was schon da ist
+	var res = dm.resource
+	var plan_files := []
+	for f in _files:
+		plan_files.append({"name": f["name"], "size": f["size"]})
+	_plan = {"stream": true, "files": plan_files, "order": play, "useAsIs": use_as_is,
+		"title": str(res.pack_info.display_name), "folder": str(res.pack_info.folder_name).trim_suffix("/"),
+		"durations": _durations()}
 	_upload_state = "uploading"
 	_up_began = false
 	_up_index = 0
@@ -263,7 +291,8 @@ func _upload_step() -> void:
 	if _leaving or not is_instance_valid(dm) or _upload_state != "uploading":
 		return
 	if not _up_began:
-		_http_job(HTTPClient.METHOD_POST, "/api/rooms/%s/dub/pack/begin" % bridge.room_code, [], PackedByteArray(), _on_upload_reply.bind(0))
+		_http_job(HTTPClient.METHOD_POST, "/api/rooms/%s/dub/pack/begin" % bridge.room_code,
+			["Content-Type: application/json"], JSON.stringify(_plan).to_utf8_buffer(), _on_upload_reply.bind(0))
 		return
 	if _up_index >= _files.size():
 		_upload_state = "commit"
@@ -327,14 +356,19 @@ func _upload_retry(code: int, body: PackedByteArray) -> void:
 	get_tree().create_timer(wait).timeout.connect(_upload_step)
 
 
-func _commit(reuse: bool) -> void:
-	var durations := []
+## Längen der Zeilen, damit der Server sie schon kennt, bevor die Dateien da sind.
+func _durations() -> Array:
+	var out := []
 	for inst in dm.performance_array:
 		var a = inst.shared_omniclip.clip_audio
-		durations.append({"id": str(inst.shared_omniclip.file_name_agnostic), "duration": a.get_length() if a else 0.0})
+		out.append({"id": str(inst.shared_omniclip.file_name_agnostic), "duration": a.get_length() if a else 0.0})
+	return out
+
+
+func _commit(reuse: bool) -> void:
 	var res = dm.resource
 	var body := {"order": order + use_as_is, "useAsIs": use_as_is, "title": str(res.pack_info.display_name),
-		"folder": str(res.pack_info.folder_name).trim_suffix("/"), "durations": durations, "reuse": reuse}
+		"folder": str(res.pack_info.folder_name).trim_suffix("/"), "durations": _durations(), "reuse": reuse}
 	_http_job(HTTPClient.METHOD_POST, "/api/rooms/%s/dub/pack/commit" % bridge.room_code, ["Content-Type: application/json"],
 		JSON.stringify(body).to_utf8_buffer(), _on_commit_done.bind(reuse))
 
@@ -577,7 +611,7 @@ func _process(_delta: float) -> void:
 			_ask_hub()
 		return
 	if not _started:
-		if phase in ["playing", "paused"] and _upload_state == "done":
+		if phase in ["playing", "paused"] and _upload_state in ["uploading", "commit", "done"]:
 			_begin()
 		return
 	_fetch_known_takes()
@@ -1486,14 +1520,17 @@ func _refresh() -> void:
 	# Start
 	var cs = d.get("canStart")
 	var reason := str(cs.get("reason", "")) if cs is Dictionary else ""
-	var ok: bool = cs is Dictionary and cs.get("ok", false) and _upload_state == "done"
+	# Starten geht, sobald der Server es erlaubt: der Rest des Packs kommt während des Spiels nach
+	var ok: bool = cs is Dictionary and cs.get("ok", false)
 	if _btn_start.has_method("enable"):
 		_btn_start.enable(ok)
-	_btn_force.visible = reason == "loading" and _upload_state == "done"
+	_btn_force.visible = reason == "loading"
 	_hub_status.text = "" if ok else {
 		"no_pack": _t("Das Pack wird noch hochgeladen."),
 		"no_players": _t("Es spielt noch niemand mit."),
 		"loading": _t("Noch nicht alle haben das Pack geladen."),
+		"video_loading": _t("Das Video wird noch vorbereitet."),
+		"pack_loading": _t("Die erste Zeile wird noch hochgeladen."),
 	}.get(reason, "")
 	_check_export()
 	if _finished:

@@ -145,13 +145,19 @@
       if (j.version !== v || !j.pack) return;
       D.pack = j.pack;
       D.orderVersion = j.orderVersion;
-      if (!fresh) return render();
+      // Kommt das Pack aus dem Spiel, sind am Anfang noch nicht alle Zeilen da (ready = false).
+      // Geholt wird nur, was da ist; der Rest kommt mit der nächsten Fassung nach.
       const urls = [];
-      for (const c of j.pack.clips) { if (c.audio) urls.push(c.audio); if (c.image) urls.push(c.image); }
+      for (const c of j.pack.clips) {
+        if (c.ready === false) continue;
+        if (c.audio) urls.push(c.audio);
+        if (c.image) urls.push(c.image);
+      }
       if (j.pack.backing) urls.push(j.pack.backing);
       if (j.pack.icon) urls.push(j.pack.icon);
-      D.need = new Set(urls).size;
-      D.queue = [...new Set(urls)];
+      const want = [...new Set(urls)];
+      D.need = want.length;
+      D.queue = want.filter((u) => !D.files.has(u));
       reportReady();
       pump();
       render();
@@ -941,8 +947,12 @@
     if (f('err')) f('err').textContent = t(ps.error);
     if (f('bar')) {
       const need = D.need || 0, have = Math.min(D.files.size, need);
+      const up = ps.loading;
       f('bar').style.width = need ? `${(have / need) * 100}%` : '0%';
-      f('load').textContent = !D.pack ? t('Pack wird geladen …') : have >= need ? t('Pack ist geladen.') : t(`Pack wird geladen: ${have} von ${need}`);
+      f('load').textContent = !D.pack ? t('Pack wird geladen …')
+        : have < need ? t(`Pack wird geladen: ${have} von ${need}`)
+        : up ? t(`Zeilen vom PC: ${up.have} von ${up.need}`)
+        : t('Pack ist geladen.');
     }
     if (f('video')) f('video').textContent = t(`Video wird für den Browser vorbereitet: ${Math.round((video.pct || 0) * 100)} %`);
   }
@@ -1077,6 +1087,8 @@
       no_pack: t('Erst ein Pack hochladen.'),
       no_lines: t('In diesem Pack gibt es keine Zeilen zum Sprechen.'),
       no_players: t('Es spielt niemand mit.'),
+      video_loading: t('Das Video ist noch nicht fertig.'),
+      pack_loading: t('Die erste Zeile kommt gerade vom PC.'),
       loading: t(`Noch nicht alle haben das Pack (${(cs.waiting || []).map(pname).join(', ')}).`),
     }[cs.reason] || '';
     card.innerHTML = `
@@ -1354,8 +1366,9 @@
     const box = $id('extra');
     const lead = isLeader();
     const pause = d.pause;
+    const wait = d.waitClip;
     const clipNow = d.turn?.clipId || '';
-    if (same(box, JSON.stringify(['e', lead, pause && Math.ceil((pause.until - serverNow()) / 1000), clipNow, D.skipSent === clipNow]))) return;
+    if (same(box, JSON.stringify(['e', lead, pause && Math.ceil((pause.until - serverNow()) / 1000), wait, clipNow, D.skipSent === clipNow]))) return;
     let html = `<button type="button" class="cv-pill" data-act="options">${t('Optionen')}</button><p class="dub-status grow" data-f="st"></p>`;
     if (lead) {
       if (pause || d.turn) html += `<button type="button" class="cv-pill" data-act="skip" ${D.skipSent === clipNow ? 'disabled' : ''}>${pause ? t('Überspringen') : t('Zeile überspringen')}</button>`;
@@ -1369,6 +1382,10 @@
       st.textContent = t(`Pausiert: ${pause.name} ist nicht verbunden. Weiter in ${left} s.`);
       clearTimeout(D.pauseTick);
       D.pauseTick = setTimeout(() => dv()?.pause && renderExtra(dv()), 1000);
+    } else if (wait) {
+      // Das Spiel lädt noch: die Zeile kommt gleich, dann geht es von selbst weiter
+      st.className = 'dub-status grow warn';
+      st.textContent = t('Die nächste Zeile kommt gerade vom PC …');
     }
   }
 

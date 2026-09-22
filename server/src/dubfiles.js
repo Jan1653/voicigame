@@ -288,12 +288,22 @@ const asList = (v) => (Array.isArray(v) ? v : v === undefined || v === null || v
 
 /* ---------------- Längen ---------------- */
 
-/** Länge einer Audiodatei in Sekunden (WAV, Ogg Vorbis/Opus). 0 = unbekannt. */
+const durCache = new Map();   // Pfad|Größe|Zeit -> Sekunden
+
+/** Länge einer Audiodatei in Sekunden (WAV, Ogg Vorbis/Opus). 0 = unbekannt.
+ *  Gemerkt, weil der Pack-Ordner beim fortlaufenden Hochladen immer wieder gelesen wird. */
 export function audioDuration(file) {
   try {
+    const st = fs.statSync(file);
+    const key = `${file}|${st.size}|${st.mtimeMs}`;
+    if (durCache.has(key)) return durCache.get(key);
     const e = ext(file);
-    if (e === 'wav') return wavInfo(fs.readFileSync(file))?.duration || 0;
-    if (e === 'ogg' || e === 'opus' || e === 'ogv') return oggDuration(file);
+    let d = 0;
+    if (e === 'wav') d = wavInfo(fs.readFileSync(file))?.duration || 0;
+    else if (e === 'ogg' || e === 'opus' || e === 'ogv') d = oggDuration(file);
+    if (durCache.size > 2000) durCache.clear();
+    durCache.set(key, d);
+    return d;
   } catch {}
   return 0;
 }
@@ -348,8 +358,14 @@ function oggDuration(file) {
  * Liest einen Pack-Ordner (flach, so wie das Spiel Dub-Packs liest).
  * -> {title, subtitle, authors, readme, icon, video, backing, clips:[{id, audio, image, caption, chars, times, dubOnly, duration}]}
  */
-export function readPack(dir) {
-  const files = fs.readdirSync(dir).filter((f) => fs.statSync(path.join(dir, f)).isFile());
+/** Pack-Ordner einlesen, so wie das Spiel ihn liest.
+ *  expect: Dateien, die erst noch kommen (fortlaufendes Hochladen). Ihre Zeilen entstehen schon jetzt.
+ *  done:   Dateien, die vollständig da sind. Ohne Angabe gilt alles im Ordner als fertig.
+ *  durations: Längen vom Spiel (id -> Sekunden), solange die Datei noch fehlt. */
+export function readPack(dir, { expect = null, done = null, durations = null } = {}) {
+  const real = fs.readdirSync(dir).filter((f) => fs.statSync(path.join(dir, f)).isFile());
+  const there = done || new Set(real);
+  const files = expect ? [...new Set([...expect, ...real])] : real;
   const byBase = new Map();
   for (const f of files) {
     const b = base(f).toLowerCase();
@@ -397,7 +413,8 @@ export function readPack(dir) {
       chars: asList(cfg.dub_characters).map((c) => String(c).trim()).filter(Boolean),
       times: asList(cfg.dub_timestamps).map(Number).filter((x) => Number.isFinite(x)),
       dubOnly: !!cfg.dub_only,
-      duration: audioDuration(path.join(dir, f)),
+      duration: there.has(f) ? audioDuration(path.join(dir, f)) : Number(durations?.[id]) || 0,
+      have: there.has(f) && (!image || there.has(image)),
     });
   }
   const video = ['ogv', 'mp4', 'webm', 'mkv', 'mov'].map((e) => find('dub_video', [e])).find(Boolean) || null;
