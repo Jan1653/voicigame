@@ -95,9 +95,13 @@ function broadcastState(room) {
   pendingBroadcast.add(room);
   setTimeout(() => {
     pendingBroadcast.delete(room);
+    // Einmal die gemeinsame Sicht bauen, je Handy nur noch den eigenen Teil daraufsetzen
     const hostView = room.view();
     toHosts(room, { type: 'state', state: hostView });
-    for (const p of room.players.values()) if (p.kind === 'phone' && p.ws) send(p.ws, { type: 'state', state: room.view(p.id) });
+    for (const p of room.players.values()) {
+      if (p.kind !== 'phone' || !p.ws || p.ws.readyState !== 1) continue;
+      send(p.ws, { type: 'state', state: room.view(p.id, hostView) });
+    }
   }, 30);
 }
 

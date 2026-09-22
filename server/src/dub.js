@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import express from 'express';
 import { readPack, orderClips, extractPackZip, writeZip, wavInfo, safeName } from './dubfiles.js';
-import { checkStorage, storageAdd, storageLeft } from './limits.js';
+import { checkStorage, storageAdd, storageAddFile, storageLeft } from './limits.js';
 import { ffmpeg, findFfmpeg, probe } from './ffjobs.js';
 import { count as countStat, observe as observeStat } from './stats.js';
 
@@ -90,6 +90,7 @@ export class DubSession {
     this.waitClip = null;              // Zeile, deren Dateien noch unterwegs sind
     this.offer = null;                 // laufende Zeile jemand anderem angeboten, siehe offerLine
     this.offerTimer = null;
+    this.upBytes = 0;                  // was vom laufenden Pack-Upload schon da ist (statt jedes Mal zu zählen)
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -145,6 +146,7 @@ export class DubSession {
     if (this.phase !== 'hub') throw new Error('Das Pack kann nur in der Lobby gewechselt werden.');
     this.plan = null;
     this.waitClip = null;
+    this.upBytes = 0;
     clearTimeout(this.rescanTimer);
     this.rescanTimer = null;
     if (!plan) {
@@ -268,6 +270,9 @@ export class DubSession {
     this.plan.complete = true;
     this.plan.ready = -1;
     this.rescan();
+    countStat('packs');
+    observeStat('pack_mb', this.upBytes / MB);
+    observeStat('pack_lines', this.performed().length);
     this.waitClip = null;
     this.advance();
     if (this.pack?.video && this.video.status === 'none') this.prepareVideo().catch((e) => console.warn('Video:', e.message));
@@ -396,6 +401,7 @@ export class DubSession {
         },
       });
       if (version !== this.version) return;
+      storageAddFile(out);
       Object.assign(this.video, { status: 'ready', pct: 1, file: out, mime: 'video/mp4', h264: true });
     } catch (err) {
       if (version !== this.version) return;
@@ -800,7 +806,11 @@ export class DubSession {
 
   /* ---------- Ansicht ---------- */
 
-  view(forPid) {
+  /** base: die gemeinsame Sicht vom Rundruf, dann bleibt je Spieler nur „me“ zu tun. */
+  view(forPid, base = null) {
+    if (base) {
+      return { ...base, me: forPid ? this.meView(forPid) : null };
+    }
     const t = this.turns[this.turnIndex] || null;
     const counts = {};
     for (const id of this.performed()) for (const c of this.clips.get(id).chars) counts[c] = (counts[c] || 0) + 1;
@@ -847,10 +857,14 @@ export class DubSession {
       export: { status: this.exportJob.status, pct: Math.round(this.exportJob.pct * 100) / 100, error: this.exportJob.error, name: this.exportJob.name },
       ffmpeg: !!findFfmpeg(),
       waitGame: this.waitGame(),
-      me: forPid ? {
-        leader: leader === forPid, canUpload: this.canUpload(forPid), spectator: this.spectators.has(forPid),
-        owner: this.leaderId === forPid,
-      } : null,
+      me: forPid ? this.meView(forPid) : null,
+    };
+  }
+
+  meView(pid) {
+    return {
+      leader: this.leaderPid() === pid, canUpload: this.canUpload(pid), spectator: this.spectators.has(pid),
+      owner: this.leaderId === pid,
     };
   }
 
@@ -921,6 +935,7 @@ export class DubSession {
       });
       fs.rmSync(mixFile, { force: true });
       if (backRaw) fs.rmSync(backRaw, { force: true });
+      storageAddFile(out);
       job.file = out;
       job.status = 'done';
       countStat('exports');
@@ -1216,11 +1231,13 @@ export function installDub(app, ctx) {
     // Stücke müssen lückenlos aneinander passen
     const have = fs.existsSync(file) ? fs.statSync(file).size : 0;
     if (offset && offset !== have) return res.status(409).json({ error: 'bad_offset', have });
-    // Grenze für diese Datei: was vom Pack (alle Dateien zusammen) und vom Server noch übrig ist
-    const budget = Math.min(MAX_PACK - (folderBytes(dir) - have), storageLeft(dataDirOf(a.room)));
+    // Grenze für diese Datei: was vom Pack (alle Dateien zusammen) und vom Server noch übrig ist.
+    // Wie viel vom Pack schon da ist, wird mitgezählt statt bei jedem Stück neu durchgezählt.
+    const budget = Math.min(MAX_PACK - (a.dub.upBytes - have), storageLeft(dataDirOf(a.room)));
     if (budget <= 0) return res.status(413).json({ error: 'too_large' });
     try {
       const bytes = await receive(req, file, have + budget, offset);
+      a.dub.upBytes += bytes - have;
       storageAdd(bytes - have);
       a.dub.fileArrived(name, bytes);
       res.json({ ok: true, bytes });
@@ -1239,6 +1256,7 @@ export function installDub(app, ctx) {
       d.beginUpload();
       broadcastState(a.room);
       const got = await receive(req, zip, Math.min(MAX_PACK, storageLeft(dataDirOf(a.room))));
+      d.upBytes += got;
       storageAdd(got);
       d.packStatus = { status: 'processing', error: null, note: 'unzip' };
       broadcastState(a.room);
@@ -1287,7 +1305,10 @@ export function installDub(app, ctx) {
       const out = path.join(a.dub.dir, 'web', `${name}.${fmt}`);
       const conv = fmt === 'mp3' ? ['-ac', '2', '-b:a', '160k'] : ['-ac', '1', '-ar', String(SR), '-c:a', 'pcm_s16le'];
       try {
-        if (!fs.existsSync(out)) await ffmpeg(['-i', file, '-vn', ...conv, out], { key: out, timeoutMs: 3 * 60 * 1000 });
+        if (!fs.existsSync(out)) {
+          await ffmpeg(['-i', file, '-vn', ...conv, out], { key: out, timeoutMs: 3 * 60 * 1000 });
+          storageAddFile(out);
+        }
         return res.type(fmt === 'mp3' ? 'audio/mpeg' : 'audio/wav').sendFile(out);
       } catch {
         return res.status(500).json({ error: 'convert_failed' });

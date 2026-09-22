@@ -34,7 +34,16 @@ setInterval(() => {
   for (const [ip, list] of created) if (!list.some((t) => now - t < WINDOW_MS)) created.delete(ip);
 }, WINDOW_MS).unref();
 
-/* ---------- Speicherplatz ---------- */
+/* ---------- Speicherplatz ----------
+ * Alles durchzählen heißt, über jede Datei jedes Raums zu laufen. Bei vielen Räumen mit großen
+ * Packs sind das Zehntausende Dateien, und der Server steht solange. Deshalb wird nur selten
+ * wirklich gezählt und dazwischen mitgerechnet: was hochgeladen oder umgewandelt wird, kommt
+ * dazu, ein aufgeräumter Raum geht ab. Nahe an der Grenze wird wieder öfter nachgezählt,
+ * damit Ungenauigkeiten (etwa Dateien von ffmpeg) den Server nicht volllaufen lassen. */
+
+const SCAN_MS = 5 * 60 * 1000;
+const SCAN_NEAR_MS = 5000;
+const NEAR = 0.8;
 
 let usedCache = { at: 0, bytes: 0 };
 
@@ -56,9 +65,10 @@ function dirSize(dir) {
   return total;
 }
 
-/** Belegter Platz im Datenordner (höchstens alle 5 s neu gezählt). */
+/** Belegter Platz im Datenordner. */
 export function storageUsed(dataDir) {
-  if (Date.now() - usedCache.at > 5000) usedCache = { at: Date.now(), bytes: dirSize(dataDir) };
+  const ttl = usedCache.bytes > MAX_STORAGE * NEAR ? SCAN_NEAR_MS : SCAN_MS;
+  if (Date.now() - usedCache.at > ttl) usedCache = { at: Date.now(), bytes: dirSize(dataDir) };
   return usedCache.bytes;
 }
 
@@ -70,6 +80,16 @@ export function storageLeft(dataDir) {
 /** Nach einem Upload den Zähler sofort erhöhen, damit parallele Uploads ihn sehen. */
 export function storageAdd(bytes) {
   usedCache.bytes += Math.max(0, bytes || 0);
+}
+
+/** Eine fertige Datei (z. B. von ffmpeg) mitzählen. */
+export function storageAddFile(file) {
+  try { storageAdd(fs.statSync(file).size); } catch {}
+}
+
+/** Ordner eines aufgeräumten Raums abziehen (einmal je Raum, nicht bei jeder Prüfung). */
+export function storageDrop(dir) {
+  usedCache.bytes = Math.max(0, usedCache.bytes - dirSize(dir));
 }
 
 /** Antwortet mit 507 und false, wenn für want Bytes kein Platz mehr ist. */

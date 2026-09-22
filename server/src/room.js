@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { watcherCount } from './stream.js';
 import { observe } from './stats.js';
+import { storageDrop } from './limits.js';
 
 const rid = (bytes = 8) => crypto.randomBytes(bytes).toString('hex');
 
@@ -81,13 +82,15 @@ export class Room {
     return true;
   }
 
-  showView(forPlayerId) {
+  /** base: die schon gebaute gemeinsame Sicht wiederverwenden (siehe view). */
+  showView(forPlayerId, base = null) {
     const r = this.show.round;
-    const round = r ? {
+    const round = base ? base.round : r ? {
       roundId: r.roundId, index: r.index, total: r.total, clipId: r.clipId, seconds: r.seconds,
       countdown: r.countdown, leadIn: r.leadIn, recorders: r.recorders, done: Object.keys(r.got),
     } : null;
-    const view = { game: this.game, round, status: this.show.status, scores: this.show.scores, ranking: this.show.ranking };
+    const view = base ? { ...base }
+      : { game: this.game, round, status: this.show.status, scores: this.show.scores, ranking: this.show.ranking };
     if (forPlayerId && round) view.mine = round.recorders.includes(forPlayerId) && !round.done.includes(forPlayerId);
     return view;
   }
@@ -330,7 +333,22 @@ export class Room {
 
   /* ---------- Ansichten ---------- */
 
-  view(forPlayerId = null) {
+  /**
+   * Zustand für den Host (ohne forPlayerId) oder für ein Handy.
+   * Fast alles ist für alle gleich, nur „me“, „show.mine“ und „dub.me“ nicht. Beim Rundruf wird
+   * die gemeinsame Sicht deshalb einmal gebaut und hier als base wieder hereingereicht: das spart
+   * bei vielen Räumen und Spielern den Großteil der Arbeit.
+   */
+  view(forPlayerId = null, base = null) {
+    if (base) {
+      const p = this.players.get(forPlayerId);
+      return {
+        ...base,
+        show: this.showView(forPlayerId, base.show),
+        dub: this.dub ? this.dub.view(forPlayerId, base.dub) : null,
+        me: p ? { id: p.id, name: p.name, queue: this.queueFor(p.id) } : null,
+      };
+    }
     const players = [...this.players.values()]
       .filter((p) => !p.left)
       .sort((a, b) => a.joinOrder - b.joinOrder)
@@ -380,6 +398,7 @@ export class Room {
   destroy() {
     this.recordLife();
     try {
+      storageDrop(this.dir);   // vor dem Löschen zählen, danach ist nichts mehr da
       fs.rmSync(this.dir, { recursive: true, force: true });
     } catch {}
   }
