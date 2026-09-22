@@ -281,8 +281,8 @@ export class DubSession {
 
   /** Hochgeladenes Pack übernehmen. opts: {order, useAsIs, orderMode} (vom Spiel: dessen Reihenfolge), reuse: vorhandenes Pack behalten */
   async commit(opts = {}) {
-    if (this.plan) return this.finishStream(opts);
     if (opts.reuse) return this.reuse(opts);
+    if (this.plan) return this.finishStream(opts);
     const staging = this.stagingDir();
     if (!fs.existsSync(staging)) throw new Error('Es wurde nichts hochgeladen.');
     this.packStatus = { status: 'processing', error: null, note: null };
@@ -345,6 +345,7 @@ export class DubSession {
     if (this.phase !== 'hub') throw new Error('Das Pack kann nur in der Lobby gewechselt werden.');
     this.clearTakes();
     const known = (Array.isArray(opts.order) ? opts.order : []).map(String).filter((id) => this.clips.has(id));
+    if (known.length && this.plan) this.plan.order = known;
     if (known.length) {
       this.orderMode = 'game';
       this.order = known.concat(this.pack.clips.map((c) => c.id).filter((id) => !known.includes(id)));

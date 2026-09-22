@@ -44,12 +44,15 @@
   const remove = (id) => tx('readwrite', (s) => s.delete(id));
   const clear = () => tx('readwrite', (s) => s.clear());
 
-  /** Zu viel oder zu alt: die ältesten fallen heraus. */
+  /** Zu viel geworden: die ältesten fallen heraus (list() gibt die neuesten zuerst). */
   async function prune() {
     const all = await list();
     let bytes = all.reduce((n, x) => n + (x.blob?.size || 0), 0);
-    for (let i = all.length - 1; i >= 0 && (bytes > MAX_MB * 1024 * 1024 || all.length - (all.length - 1 - i) > MAX_COUNT); i--) {
+    let left = all.length;
+    for (let i = all.length - 1; i >= 0; i--) {
+      if (bytes <= MAX_MB * 1024 * 1024 && left <= MAX_COUNT) break;
       bytes -= all[i].blob?.size || 0;
+      left--;
       await remove(all[i].id);
     }
   }
