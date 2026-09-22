@@ -337,7 +337,10 @@ export function report(all, days, { json = false, color = true } = {}) {
   kv(out, 'Abgewiesen', `${int(sum('rate_limited'))}× zu viele Räume je Adresse, ${int(sum('full_room'))}× Raum voll, ${int(sum('full_storage'))}× Speicher voll`);
   kv(out, 'Höchststände', `${pl(top('rooms'), 'Raum', 'Räume')} ${c.dim(`(${int(top('active'))} in Benutzung)`)}, ${int(top('players'))} Spieler, ${int(top('watchers'))} Zuschauer`);
   kv(out, 'Platz und RAM', `${size(top('storage_mb'))} Dateien, ${size(top('rss_mb'))} Arbeitsspeicher ${c.dim('(Höchststand)')}`);
-  kv(out, 'Fehler im Log', errs ? c.bad(int(errs)) : c.ok('0'));
+  const warns = sum('warnings');
+  const webErrs = sum('errors_web');
+  kv(out, 'Fehler im Log', (errs ? c.bad(int(errs)) : c.ok('0')) + c.dim(`   ${int(warns)} Warnungen, ${int(webErrs)} aus Browsern`)
+    + c.dim('   (node src/errlog.js)'));
   out.push('');
   return out.map((l) => l.replace(/\s+$/, '')).join('\n');
 }

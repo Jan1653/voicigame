@@ -15,9 +15,12 @@ import { wavInfo } from './dubfiles.js';
 import { count as countStat, peak as peakStat, observe as observeStat, tag as tagStat, flush as flushStats, startAutoFlush } from './stats.js';
 import { admit, isOverloaded, MAX_ACTIVE_ROOMS } from './queue.js';
 import { installMod } from './mod.js';
+import { install as installErrLog, fromWeb as logFromWeb } from './errlog.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Fehler und Warnungen landen zusätzlich in STATS_DIR/log.txt (docker exec voicigame node src/errlog.js)
+installErrLog();
 // Unerwartete Fehler protokollieren statt den Server (und damit alle Räume) zu beenden
 process.on('unhandledRejection', (e) => { countStat('errors'); console.error('Unbehandelter Fehler:', e); });
 process.on('uncaughtException', (e) => { countStat('errors'); console.error('Unerwarteter Fehler:', e); });
@@ -132,6 +135,20 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, rooms: rooms.size, busy });
 });
 
+// Fehler aus den Browsern der Spieler: nur der Text, keine Namen und keine Adressen. Höchstens 20 je Stunde
+// und Anschluss, damit eine kaputte Seite den Server nicht zuschreibt.
+const webLog = new Map();
+app.post('/api/log', express.json({ limit: '4kb' }), (req, res) => {
+  const now = Date.now();
+  if (webLog.size > 5000) webLog.clear();
+  const e = webLog.get(req.ip) || { n: 0, at: now };
+  if (now - e.at > 3600_000) { e.n = 0; e.at = now; }
+  e.n++;
+  webLog.set(req.ip, e);
+  if (e.n <= 20) logFromWeb(String(req.body?.msg || '').slice(0, 300), String(req.body?.where || '').slice(0, 120));
+  res.json({ ok: true });
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Dub-Modus (Synchronisieren): eigene Datei
@@ -222,6 +239,9 @@ app.get('/api/rooms/:code/clips/:clipId', (req, res) => {
   const clip = room.clip(String(req.params.clipId));
   if (!clip?.available) return res.status(404).json({ error: 'clip_not_ready' });
   res.set('Cache-Control', 'private, max-age=3600');
+  // Hochgeladenes nie als Seite ausführen lassen (fester Typ, keine Skripte)
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Content-Security-Policy', "default-src 'none'; sandbox");
   res.type(clip.mime).sendFile(clip.file);
 });
 
@@ -257,6 +277,9 @@ app.get('/api/rooms/:code/turns/:turnId/recording', (req, res) => {
   if (!isHost(room, req)) return res.status(403).json({ error: 'forbidden' });
   const f = path.join(room.dir, 'rec', `${String(req.params.turnId).replace(/[^a-f0-9]/g, '')}.wav`);
   if (!fs.existsSync(f)) return res.status(404).json({ error: 'not_found' });
+  // Hochgeladenes nie als Seite ausführen lassen (fester Typ, keine Skripte)
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Content-Security-Policy', "default-src 'none'; sandbox");
   res.type('audio/wav').sendFile(f);
 });
 
@@ -301,6 +324,9 @@ app.get('/api/rooms/:code/rounds/:roundId/recording/:playerId', (req, res) => {
   const playerId = String(req.params.playerId).replace(/[^a-z0-9]/g, '');
   const f = path.join(room.dir, 'rec', `show_${roundId}_${playerId}.wav`);
   if (!fs.existsSync(f)) return res.status(404).json({ error: 'not_found' });
+  // Hochgeladenes nie als Seite ausführen lassen (fester Typ, keine Skripte)
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Content-Security-Policy', "default-src 'none'; sandbox");
   res.type('audio/wav').sendFile(f);
 });
 

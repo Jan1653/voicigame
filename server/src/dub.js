@@ -21,7 +21,7 @@ import { count as countStat, observe as observeStat } from './stats.js';
  * ===================================================================== */
 
 const MB = 1024 * 1024;
-const MAX_PACK = (Number(process.env.DUB_MAX_PACK_MB) || 800) * MB;
+const MAX_PACK = (Number(process.env.DUB_MAX_PACK_MB) || 1024) * MB;   // 1 GB je Pack
 // Längstes Video für Export und Umwandlung: ein kleines Pack kann ein stundenlanges Video enthalten
 const MAX_VIDEO_S = (Number(process.env.DUB_MAX_VIDEO_MIN) || 20) * 60;
 // Datenordner aller Räume (für die Speichergrenze in limits.js)
@@ -49,9 +49,16 @@ const key = (clipId, pid) => `${clipId}\n${pid}`;
 const VIDEO_MIME = { mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mkv: 'video/x-matroska' };
 const FILE_MIME = {
   ogg: 'audio/ogg', wav: 'audio/wav', mp3: 'audio/mpeg', flac: 'audio/flac', m4a: 'audio/mp4', opus: 'audio/ogg', aac: 'audio/aac',
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', bmp: 'image/bmp', svg: 'image/svg+xml',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', bmp: 'image/bmp',
   txt: 'text/plain; charset=utf-8', ini: 'text/plain; charset=utf-8',
 };
+
+/** Hochgeladenes ausliefern: nie als Seite ausführen lassen. Fester Typ (kein Raten), keine Skripte,
+ *  kein Zugriff auf andere Seiten. Gilt für Pack-Dateien, Video, Aufnahmen, Export und ZIP. */
+function asFile(res) {
+  res.set('X-Content-Type-Options', 'nosniff');
+  res.set('Content-Security-Policy', "default-src 'none'; sandbox");
+}
 const extOf = (f) => path.extname(f).slice(1).toLowerCase();
 
 /** Liste der Pack-Dateien (Name, Größe) und ein Fingerabdruck daraus: gleicher Fingerabdruck = gleiches Pack.
@@ -106,6 +113,7 @@ export class DubSession {
     this.seenAt = new Map();           // pid -> seit wann dabei (Frist, um „habe ich schon“ zu melden)
     this.wantTimer = null;
     this.exportPending = false;        // Export gewünscht, das Pack ist aber noch nicht ganz auf dem Server
+    this.exportDropTimer = null;
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -430,7 +438,30 @@ export class DubSession {
   }
 
   /** Video für Browser bereitstellen: abspielbar lassen oder mit ffmpeg zu MP4 (H.264) umwandeln. */
+  /** Braucht jemand das Video vom Server? Nur Browser ohne eigenen Zwischenspeicher; PCs mit Mod haben das Pack.
+   *  Ohne solche Leute wird gar nicht erst umgewandelt: das ist die teuerste Arbeit auf dem Server. */
+  needsWebVideo() {
+    for (const p of this.room.players.values()) {
+      if (p.kind !== 'phone' || !p.connected || p.left || p.client === 'game') continue;
+      const r = this.ready.get(p.id);
+      if (!(r && r.version === this.version && r.own)) return true;
+    }
+    return false;
+  }
+
+  /** Wird gerufen, sobald jemand dazukommt oder meldet, dass ihm etwas fehlt. */
+  maybePrepareVideo() {
+    if (this.pack?.video && this.video.status === 'none' && this.needsWebVideo()) {
+      this.prepareVideo().catch((e) => console.warn('Video:', e.message));
+    }
+  }
+
   async prepareVideo() {
+    if (!this.needsWebVideo()) {
+      // Niemand im Browser: das Video bleibt, wie es ist. Kommt jemand dazu, läuft maybePrepareVideo()
+      this.video = { status: 'none', pct: 0, file: null, mime: null, duration: this.video.duration, height: 0, codec: null, h264: false };
+      return this.onChange();
+    }
     const version = this.version;
     const src = path.join(this.packDir(), this.pack.video);
     const e = extOf(src);
@@ -576,6 +607,7 @@ export class DubSession {
   }
 
   onConnect(pid) {
+    this.maybePrepareVideo();
     if (!this.seenAt.has(pid) || this.ready.get(pid)?.version !== this.version) {
       this.seenAt.set(pid, Date.now());
       this.scheduleWantCheck();
@@ -848,7 +880,15 @@ export class DubSession {
     this.activity.clear();
   }
 
+  /** Exportiertes Video wegräumen: es liegt nur, bis es geholt wurde (oder die Runde vorbei ist). */
+  dropExport() {
+    const f = this.exportJob.file;
+    if (f) fs.rmSync(f, { force: true });
+    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null };
+  }
+
   clearTakes() {
+    this.dropExport();
     this.toHub();
     fs.rmSync(path.join(this.dir, 'takes'), { recursive: true, force: true });
     fs.mkdirSync(path.join(this.dir, 'takes'), { recursive: true });
@@ -1069,6 +1109,8 @@ export class DubSession {
   }
 
   destroy() {
+    // Alles dieser Runde vom Server nehmen: Pack, umgewandeltes Video, Aufnahmen, Zwischenstände
+    fs.rmSync(this.dir, { recursive: true, force: true });
     this.endRound();
     clearTimeout(this.pauseTimer);
     clearTimeout(this.rescanTimer);
@@ -1399,6 +1441,7 @@ export function installDub(app, ctx) {
     const file = name && path.join(a.dub.packDir(), name);
     if (!file || !fs.existsSync(file)) return res.status(404).json({ error: 'not_found' });
     res.set('Cache-Control', 'private, max-age=86400');
+    asFile(res);
     const fmt = String(req.query.fmt || '');
     if ((fmt === 'mp3' || fmt === 'wav') && findFfmpeg() && extOf(name) !== fmt) {
       const out = path.join(a.dub.dir, 'web', `${name}.${fmt}`);
@@ -1422,6 +1465,7 @@ export function installDub(app, ctx) {
     const v = a.dub.video;
     if (!v.file || !fs.existsSync(v.file)) return res.status(404).json({ error: 'video_not_ready' });
     res.set('Cache-Control', 'private, max-age=86400');
+    asFile(res);
     res.type(v.mime || 'video/mp4').sendFile(v.file);
   });
 
@@ -1450,6 +1494,7 @@ export function installDub(app, ctx) {
     const t = a.dub.takes.get(key(String(req.params.clipId), String(req.params.playerId)));
     if (!t || !fs.existsSync(t.file)) return res.status(404).json({ error: 'not_found' });
     res.set('Cache-Control', 'private, max-age=3600');
+    asFile(res);
     res.type('audio/wav').sendFile(t.file);
   });
 
@@ -1459,6 +1504,12 @@ export function installDub(app, ctx) {
     const j = a.dub.exportJob;
     if (j.status !== 'done' || !j.file || !fs.existsSync(j.file)) return res.status(404).json({ error: 'not_ready' });
     if (req.query.dl !== '0') attachment(res, j.name);
+    asFile(res);
+    // Nach dem Holen darf es weg: wer es später nochmal will, lässt es neu erstellen
+    res.on('finish', () => {
+      clearTimeout(a.dub.exportDropTimer);
+      a.dub.exportDropTimer = setTimeout(() => a.dub.exportJob.file === j.file && a.dub.dropExport(), 10 * 60 * 1000);
+    });
     res.type('video/mp4').sendFile(j.file);
   });
 
@@ -1469,6 +1520,8 @@ export function installDub(app, ctx) {
       const z = a.dub.takesZip();
       countStat('zips');
       attachment(res, z.name);
+      asFile(res);
+      res.on('finish', () => fs.rmSync(z.file, { force: true }));   // wird bei Bedarf neu gebaut
       res.type('application/zip').sendFile(z.file);
     } catch (e) {
       res.status(404).json({ error: e.message });
@@ -1645,6 +1698,7 @@ export function installDub(app, ctx) {
           // own: hat das Pack selbst (PC mit Mod oder Zwischenspeicher im Browser), braucht nichts vom Server
           d.ready.set(player.id, { have, need, version: Number(msg.version) || 0, own: !!msg.own });
           d.recheckWait();
+          d.maybePrepareVideo();
           // Nur bei Änderung von „bereit“ oder alle paar Dateien neu senden
           return reply(room, ws, before !== d.isReady(player.id) || have % 5 === 0 ? true : 'nobroadcast');
         }
