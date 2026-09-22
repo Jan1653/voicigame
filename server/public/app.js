@@ -440,6 +440,12 @@ async function record(turnId, seconds, countdown, pad = 0) {
     const score = target ? scoreTake(target, take) : null;
     S.review = { clipId, turnId, take, score, recUrl: URL.createObjectURL(blob) };
     renderVoiceCard();
+    // Die eigene Aufnahme bleibt auf dem Gerät, auch wenn der Raum längst zu ist
+    window.VG_TAKES?.save({
+      room: S.code, mode: show ? 'show' : 'turn', clip: clipId,
+      caption: S.state?.clips?.find((c) => c.id === clipId)?.title || '',
+      seconds: pcm.length / rate,
+    }, blob);
     let ok = false;
     for (let i = 0; i < 3 && !ok; i++) {
       const kind = show ? 'rounds' : 'turns';

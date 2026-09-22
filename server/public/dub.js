@@ -510,6 +510,9 @@
         const target = analyze(mixDown(clipBuf), clipBuf.sampleRate);
         score = scoreTake(target, analyze(pcm, SR));
       } catch {}
+      // Die eigene Aufnahme bleibt auf dem Gerät, auch wenn der Raum längst zu ist
+      window.VG_TAKES?.save({ room: S.code, mode: 'dub', pack: D.pack?.title || '', clip: clip.id,
+        caption: clip.caption || '', seconds: pcm.length / SR }, blob);
       let ok = false;
       for (let i = 0; i < 3 && !ok; i++) {
         const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(clip.id)}`), {
@@ -1646,6 +1649,7 @@
       <label class="vol">${t('Clip beim Aufnehmen')}<input type="range" min="0" max="1" step="0.05" data-vol="clipVol" value="${o.clipVol}"><span>${Math.round(o.clipVol * 100)} %</span></label>
       <label class="vol">${t('Hintergrundmusik')}<input type="range" min="0" max="1" step="0.05" data-vol="backVol" value="${o.backVol}"><span>${Math.round(o.backVol * 100)} %</span></label>
       <p class="dub-note">${t('Tipp: Mit Kopfhörern klingt die Aufnahme am saubersten.')}</p>
+      <button type="button" class="cv-btn" data-act="my-takes">${t('Deine Aufnahmen')}</button>
       <div data-f="people"></div>
       <button type="button" class="cv-btn" data-act="options-close">${t('Zurück')}</button>
     </div>`;
@@ -1744,6 +1748,7 @@
       case 'hub': return wsSend({ type: 'dub.hub' });
       case 'options': return openOptions();
       case 'give': return openGive();
+      case 'my-takes': return window.VG_TAKES?.open();
       case 'offer-yes': return wsSend({ type: 'dub.offer.take', ok: true });
       case 'offer-no': return wsSend({ type: 'dub.offer.take', ok: false });
       case 'offer-cancel': return wsSend({ type: 'dub.offer.cancel' });
