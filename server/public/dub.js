@@ -463,6 +463,33 @@
     drawWave();
   }
 
+  /** Die eigene Aufnahme bleibt auf dem Gerät, auch wenn der Raum längst zu ist.
+   *  Wenn der Browser es kann, mit dem Videoausschnitt der Zeile, sonst nur der Ton.
+   *  Das Rendern läuft in Echtzeit, deshalb immer nur eines und nie während einer Aufnahme:
+   *  die laufende Runde geht vor. */
+  let keepQueue = Promise.resolve();
+  function keepTake(clip, wav, pcm) {
+    if (!window.VG_TAKES) return;
+    keepQueue = keepQueue.then(() => keepNow(clip, wav, pcm)).catch((e) => console.warn('Aufnahme sichern:', e));
+  }
+
+  async function keepNow(clip, wav, pcm) {
+    const seconds = pcm.length / SR;
+    let video = null;
+    try {
+      if (clip.times?.length && window.VG_TAKEVIDEO?.can()) {
+        for (let i = 0; i < 100 && D.mode === 'record'; i++) await sleep(300);
+        if (D.mode !== 'record') {
+          video = await VG_TAKEVIDEO.render({ url: auth(`/api/rooms/${S.code}/dub/video`), from: clip.times[0], seconds, pcm, rate: SR });
+        }
+      }
+    } catch (e) {
+      console.warn('Aufnahme mit Video:', e);
+    }
+    await VG_TAKES.save({ room: S.code, mode: 'dub', pack: D.pack?.title || '', clip: clip.id,
+      caption: clip.caption || '', seconds, video: !!video }, video || wav);
+  }
+
   /** Aufnahme mit Versatz auf Clip-Länge bringen, auf 44,1 kHz umrechnen, als WAV. */
   async function finalTake(clipBuf) {
     const { pcm, rate } = D.take;
@@ -510,9 +537,6 @@
         const target = analyze(mixDown(clipBuf), clipBuf.sampleRate);
         score = scoreTake(target, analyze(pcm, SR));
       } catch {}
-      // Die eigene Aufnahme bleibt auf dem Gerät, auch wenn der Raum längst zu ist
-      window.VG_TAKES?.save({ room: S.code, mode: 'dub', pack: D.pack?.title || '', clip: clip.id,
-        caption: clip.caption || '', seconds: pcm.length / SR }, blob);
       let ok = false;
       for (let i = 0; i < 3 && !ok; i++) {
         const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(clip.id)}`), {
@@ -526,6 +550,7 @@
       }
       if (!ok) throw new Error(t('Senden fehlgeschlagen'));
       D.mode = 'sent';
+      keepTake(clip, blob, pcm);   // nebenher, das Rendern des Videos soll die Runde nicht aufhalten
     } catch (e) {
       D.mode = 'idle';
       toast(t(e.message || String(e)));
@@ -1013,8 +1038,10 @@
         b.className = 'claim' + (mine ? ' mine' : '') + (taken ? ' taken' : '') + (!c.claimedBy ? ' free' : '');
         b.disabled = !!taken || d.me?.spectator;
         b.setAttribute('aria-pressed', String(mine));
+        // Wie viele Zeilen die Figur hat, steht auch dran, wenn sie schon jemand hat
         const lines = c.lines === 1 ? t('1 Zeile') : t(`${c.lines} Zeilen`);
-        b.append(node('strong', null, c.name), node('span', null, mine ? t(`Deine Figur, ${lines}`) : taken ? pname(c.claimedBy) : t(`${lines}, frei`)));
+        b.append(node('strong', null, c.name), node('span', null,
+          mine ? t(`Deine Figur, ${lines}`) : taken ? `${pname(c.claimedBy)} · ${lines}` : t(`${lines}, frei`)));
         b.dataset.claim = c.name;
         b.dataset.on = String(!mine);   // gewünschter Zustand: doppelt getippt bleibt es dabei
         grid.append(b);

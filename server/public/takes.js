@@ -86,6 +86,7 @@
     return `${two(d.getDate())}.${two(d.getMonth() + 1)}. ${two(d.getHours())}:${two(d.getMinutes())}`;
   };
   const size = (b) => (b >= 1024 * 1024 ? `${(b / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+  const endung = (type = '') => (type.includes('mp4') ? 'mp4' : type.includes('webm') ? 'webm' : type.includes('ogg') ? 'ogg' : 'wav');
   const el = (tag, cls, text) => {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -162,15 +163,18 @@
     li.append(head);
     const url = URL.createObjectURL(it.blob);
     urls.push(url);
-    const audio = document.createElement('audio');
-    audio.controls = true;
-    audio.preload = 'none';
-    audio.src = url;
-    li.append(audio);
+    // Dub-Aufnahmen bringen den Videoausschnitt der Zeile mit, alles andere ist nur Ton
+    const withVideo = it.video || /^video\//.test(it.blob?.type || '');
+    const media = document.createElement(withVideo ? 'video' : 'audio');
+    media.controls = true;
+    media.preload = 'none';
+    media.playsInline = true;
+    media.src = url;
+    li.append(media);
     const btns = el('div', 'take-btns');
     const dl = el('a', 'btn btn-soft', tr('Speichern'));
     dl.href = url;
-    dl.download = `${[it.pack, it.clip || it.mode, when(it.at).replace(/[.: ]/g, '-')].filter(Boolean).join('_')}.wav`;
+    dl.download = `${[it.pack, it.clip || it.mode, when(it.at).replace(/[.: ]/g, '-')].filter(Boolean).join('_')}.${endung(it.blob?.type)}`;
     btns.append(dl);
     const del = el('button', 'btn btn-soft', tr('Löschen'));
     del.type = 'button';

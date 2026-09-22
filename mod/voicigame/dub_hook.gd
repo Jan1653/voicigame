@@ -1554,7 +1554,9 @@ func _refresh() -> void:
 			row.add_theme_constant_override("separation", 12)
 			var owner = c.get("claimedBy")
 			var who := _player_name(str(owner)) if owner else _t("frei")
-			var l := _label("%s · %s" % [str(c.get("name", "")), who], 22, false, Color.WHITE if owner else Color(0.7, 0.75, 0.8))
+			var n := int(c.get("lines", 0))
+			var lines := _t("1 Zeile") if n == 1 else _t("{} Zeilen", [n])
+			var l := _label("%s · %s · %s" % [str(c.get("name", "")), lines, who], 22, false, Color.WHITE if owner else Color(0.7, 0.75, 0.8))
 			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			l.clip_text = true
 			row.add_child(l)
