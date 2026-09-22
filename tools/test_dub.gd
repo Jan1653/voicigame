@@ -3,6 +3,8 @@ extends RefCounted
 ##   dubshot   Fotos vom Dub-Modus des Spiels (ohne Handy), zum Vergleich mit der Webseite
 ##   dub       zwei Runden mit PC und zwei Web-Handys, prüft dabei die Befunde aus dem Review (PRÜFUNG-Zeilen)
 ##             Handys: tools/fake-dub-phone.js (run_test.ps1 startet eines, ein zweites startet der Aufrufer)
+##   dubduo    Host mit einem zweiten Spiel als Mitspieler, das im eigenen Spiel mitmacht (tools/run_duo.ps1)
+##   dubmitglied  das zweite Spiel dazu: tritt bei, holt das Pack, spielt seine Figur
 
 const SOURCE_PACK := "user://game/packs_voice/Family Guy - Sneakers O'Toole/"
 const TEST_PACK := "user://voicigame_test/pack/Voicigame Dub [Test]/"
@@ -18,6 +20,10 @@ func run(driver: Node, plan: String) -> void:
 			await _dubshot()
 		"dub":
 			await _dub()
+		"dubduo":
+			await _duo()
+		"dubmitglied":
+			await _member()
 		_:
 			d._note("FEHLER: unbekannter Plan " + plan)
 
@@ -352,6 +358,175 @@ func _dub() -> void:
 		d._note("Zwischenstände des Test-Packs in den Papierkorb")
 	DubHook.test_broken_take = ""
 	_copy_results()
+	d._note("ENDE")
+
+
+## Plan „dubduo“: Host, dazu ein zweites Spiel als Mitspieler (Plan „dubmitglied“), optional Browser-Handys (DUO_WEB).
+func _duo() -> void:
+	if not _make_test_pack():
+		d._note("FEHLER: Test-Pack nicht kopiert")
+		return
+	var master: Node = await d._wait_for(func(n): return n.has_method("NewSlide"))
+	master.NewSlide("res://scenes/nav_specific/play_flow/select_member_count.tscn", false)
+	var menu: Node = await d._wait_for(func(n): return n.scene_file_path.ends_with("select_member_count.tscn"))
+	await _wait(1.5)
+	var vg = d.get_node("/root/Voicigame")
+	vg._open_lobby(menu)
+	await _wait(1.0)
+	vg._lobby._show_host()
+	await _wait(3.0)
+	var f := FileAccess.open("user://voicigame_test/room.txt", FileAccess.WRITE)
+	f.store_string(vg.bridge.room_code)
+	f.close()
+	d._note("Raum: %s" % vg.bridge.room_code)
+	var web := int(OS.get_environment("DUO_WEB"))   # so viele Browser-Handys kommen zusätzlich
+	var t := 0.0
+	while t < 120.0 and not (_game_members(vg).size() >= 1 and vg.bridge.web_players().size() >= 1 + web):
+		await _wait(0.5)
+		t += 0.5
+	d._note("Mitspieler: %s" % [vg.bridge.web_players().map(func(p): return "%s%s" % [p.name, " (Spiel)" if p.get("game", false) else ""])])
+	if _game_members(vg).is_empty():
+		d._note("FEHLER: kein Mitspieler aus einem Spiel")
+		return
+	vg._start_dub(true)
+	await _wait(2.5)
+	var dm: Node = await _enter_dub(vg)
+	var hook = vg.dub_hook
+	hook._claim_local("Brian")
+	# Warten, bis der Mitspieler das Pack hat und eine Figur nimmt
+	var member_id := str(_game_members(vg)[0].id)
+	t = 0.0
+	var last := ""
+	while t < 240.0:
+		await _wait(0.5)
+		t += 0.5
+		var dv: Dictionary = hook._dub()
+		var info = dv.get("players", []).filter(func(p): return str(p.id) == member_id)
+		var now := "Host-Pack: %s, gebraucht: %s, Mitspieler bereit: %s, eigenes Pack: %s" % [hook._upload_state, dv.get("packWanted"),
+			info[0].get("ready") if info else "?", info[0].get("own") if info else "?"]
+		if now != last:
+			d._note(now)
+			last = now
+		if info and info[0].get("ready", false) and dv.get("characters", []).any(func(c): return str(c.get("claimedBy")) == member_id):
+			break
+	await d._shot("duo_lobby")
+	await _start_when_ready(hook)
+	var step := 0
+	last = ""
+	while not (dm.performing_finished and hook._finished) and step < 1200:
+		await _wait(0.5)
+		step += 1
+		var dv: Dictionary = hook._dub()
+		var turn = dv.get("turn")
+		var now := "Spiel Zeile %d, Server %s %s, Leiste: %s" % [dm.clip_index + 1, dv.get("phase", ""),
+			str(turn.get("clipId", "")) if turn is Dictionary else "", hook._banner_text.text.replace("\n", " / ")]
+		if now != last:
+			d._note(now)
+			last = now
+		if step % 20 == 0:
+			await d._shot("duo_%03d" % step)
+	await _wait(2.0)
+	await d._shot("duo_ergebnis")
+	var dv: Dictionary = hook._dub()
+	var from_member: Array = dv.get("takes", []).filter(func(x): return str(x.playerId) == member_id).map(func(x): return x.clipId)
+	for i in dm.performance_array.size():
+		var inst = dm.performance_array[i]
+		var a = inst.member_audio
+		d._note("Zeile %d %s: %s %.2f s, Wertung %.0f %%" % [i + 1, inst.shared_omniclip.file_name_agnostic,
+			a.get_class() if a else "KEINE", a.get_length() if a else 0.0, clampf(inst.score, 0, 5) * 20.0])
+	_check("duo Aufnahmen", not from_member.is_empty() and str(dv.get("phase", "")) == "results",
+		"vom Mitspieler am Server: %s, Server %s" % [from_member, dv.get("phase", "")])
+	_check("duo Pack", hook._upload_state in ["local", "done"], "Pack beim Host: %s" % hook._upload_state)
+	# Nächste Runde vorbereiten (gleiches Pack): der Mitspieler muss seine Szene verlassen und neu betreten
+	hook._leave_hub()
+	await _wait(5.0)
+	dm = await _enter_dub(vg)
+	await _wait(20.0)
+	await d._shot("duo_zweite_lobby")
+	d._note("Zweite Runde, Lobby: %s" % [vg.dub_hook._dub().get("players", []).map(func(p): return "%s bereit=%s eigen=%s" % [p.id, p.get("ready"), p.get("own")])])
+	vg.dub_hook._leave_hub()
+	await _wait(5.0)
+	var tmp := ProjectSettings.globalize_path(TEMP_SESSION)
+	if DirAccess.dir_exists_absolute(tmp):
+		OS.move_to_trash(tmp)
+	_copy_results()
+	d._note("ENDE")
+
+
+func _game_members(vg) -> Array:
+	return vg.bridge.web_players().filter(func(p): return p.get("game", false) and p.get("connected", false))
+
+
+## Plan „dubmitglied“: tritt dem Raum aus DUO_ROOM_FILE bei (Code, den der Host schreibt) und spielt im eigenen Spiel mit.
+func _member() -> void:
+	var master: Node = await d._wait_for(func(n): return n.has_method("NewSlide"))
+	master.NewSlide("res://scenes/nav_specific/play_flow/select_member_count.tscn", false)
+	var menu: Node = await d._wait_for(func(n): return n.scene_file_path.ends_with("select_member_count.tscn"))
+	await _wait(1.5)
+	var vg = d.get_node("/root/Voicigame")
+	vg._open_lobby(menu)
+	await _wait(1.0)
+	vg._lobby._on_join()
+	await _wait(1.0)
+	var room_file := OS.get_environment("DUO_ROOM_FILE")
+	var code := ""
+	for i in 240:
+		if FileAccess.file_exists(room_file):
+			code = FileAccess.get_file_as_string(room_file).strip_edges()
+		if code.length() == 4:
+			break
+		await _wait(0.5)
+	d._note("Tritt bei: %s" % code)
+	vg._join.join(code, "PC-Freund")
+	var t := 0.0
+	var last := ""
+	while t < 240.0 and not (is_instance_valid(vg.dub_hook) and vg.dub_hook.member):
+		await _wait(0.5)
+		t += 0.5
+		var now := "Beitreten: %s %s %%" % [vg._join._pack_state, vg._join._pack_pct]
+		if now != last:
+			d._note(now)
+			last = now
+	var hook = vg.dub_hook
+	if not is_instance_valid(hook):
+		d._note("FEHLER: nicht in die Dub-Szene gekommen")
+		return
+	d._note("In der Dub-Szene, Pack: %s" % vg._join._pack_path)
+	await _wait(3.0)
+	await d._shot("mitglied_lobby")
+	hook._claim_local("Sneakers O'Toole")
+	# Statt Mikrofon die Originalzeile (wie perfekt nachgesprochen), kurz nach dem Anhören
+	hook._test_local = func(i): return hook.dm.performance_array[i].shared_omniclip.clip_audio
+	hook.test_local_delay_ms = 1500
+	t = 0.0
+	last = ""
+	while t < 900.0 and not (is_instance_valid(hook) and hook._finished):
+		await _wait(0.5)
+		t += 0.5
+		if not is_instance_valid(hook) or not is_instance_valid(hook.dm):
+			break
+		var now := "Spiel Zeile %d, Leiste: %s" % [hook.dm.clip_index + 1, hook._banner_text.text.replace("\n", " / ")]
+		if now != last:
+			d._note(now)
+			last = now
+	if not is_instance_valid(hook):
+		d._note("FEHLER: Dub-Szene vorzeitig verlassen")
+		return
+	await _wait(3.0)
+	await d._shot("mitglied_ergebnis")
+	for i in hook.dm.performance_array.size():
+		var inst = hook.dm.performance_array[i]
+		var a = inst.member_audio
+		d._note("Zeile %d %s: %s %.2f s, Wertung %.0f %%" % [i + 1, inst.shared_omniclip.file_name_agnostic,
+			a.get_class() if a else "KEINE", a.get_length() if a else 0.0, clampf(inst.score, 0, 5) * 20.0])
+	var mine: Array = hook._dub().get("takes", []).filter(func(x): return str(x.playerId) == hook._me).map(func(x): return x.clipId)
+	_check("mitglied Aufnahmen", not mine.is_empty(), "eigene Aufnahmen am Server: %s" % [mine])
+	# Host bereitet die nächste Runde vor: die Szene muss sich von selbst schließen
+	t = 0.0
+	while t < 30.0 and is_instance_valid(vg.dub_hook) and vg.dub_hook == hook:
+		await _wait(0.5)
+		t += 0.5
+	_check("mitglied verlässt", not is_instance_valid(hook) or vg.dub_hook != hook, "Szene nach der Runde verlassen nach %.0f s" % t)
 	d._note("ENDE")
 
 

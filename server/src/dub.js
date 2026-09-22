@@ -40,6 +40,7 @@ function folderBytes(dir) {
 const MAX_TAKE = (Number(process.env.DUB_MAX_TAKE_MB) || 25) * MB;
 const PAUSE_GRACE_MS = 20000;
 const OFFER_MS = 60000;        // so lange steht ein Angebot, eine Zeile abzugeben
+const WANT_GRACE_MS = 5000;    // so lange darf jemand nach dem Beitreten melden, dass er das Pack schon hat
 const WATCH_LEAD_MS = 2500;
 const SR = 44100;
 const rid = (n = 6) => crypto.randomBytes(n).toString('hex');
@@ -52,6 +53,15 @@ const FILE_MIME = {
   txt: 'text/plain; charset=utf-8', ini: 'text/plain; charset=utf-8',
 };
 const extOf = (f) => path.extname(f).slice(1).toLowerCase();
+
+/** Liste der Pack-Dateien (Name, Größe) und ein Fingerabdruck daraus: gleicher Fingerabdruck = gleiches Pack.
+ *  Damit erkennen Browser (Zwischenspeicher) und PCs mit Mod (eigener Pack-Ordner), dass sie das Pack schon haben. */
+function fileInfoOf(list) {
+  const files = list.filter((f) => f && f.name).map((f) => ({ name: String(f.name), size: Math.max(0, Number(f.size) || 0) }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  const fp = crypto.createHash('sha1').update(files.map((f) => `${f.name}:${f.size}`).join('\n')).digest('hex').slice(0, 16);
+  return { fp, files };
+}
 
 function slug(s) {
   return String(s || 'Dub').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Dub';
@@ -92,6 +102,10 @@ export class DubSession {
     this.offer = null;                 // laufende Zeile jemand anderem angeboten, siehe offerLine
     this.offerTimer = null;
     this.upBytes = 0;                  // was vom laufenden Pack-Upload schon da ist (statt jedes Mal zu zählen)
+    this.fileInfo = { fp: null, files: [] };   // Dateien des Packs mit Größe und Fingerabdruck, siehe fileInfoOf
+    this.seenAt = new Map();           // pid -> seit wann dabei (Frist, um „habe ich schon“ zu melden)
+    this.wantTimer = null;
+    this.exportPending = false;        // Export gewünscht, das Pack ist aber noch nicht ganz auf dem Server
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -186,7 +200,49 @@ export class DubSession {
     this.version++;
     this.video = { status: 'none', pct: 0, file: null, mime: null, duration: 0, height: 0, codec: null, h264: false };
     this.packStatus = { status: 'uploading', error: null, note: null };
+    this.fileInfo = fileInfoOf([...files].map(([name, size]) => ({ name, size })));
+    this.exportPending = false;
+    // Neues Pack: alle bekommen wieder die Frist, um zu melden, dass sie es schon haben
+    const now = Date.now();
+    for (const pl of this.room.players.values()) if (pl.kind === 'phone') this.seenAt.set(pl.id, now);
+    this.scheduleWantCheck();
     this.rescan();
+  }
+
+  /** Braucht gerade jemand die Dateien vom Server? Das sind Browser, die das Pack nicht zwischengespeichert haben,
+   *  PCs mit Mod, denen es fehlt, und der Video-Export. Solange niemand sie braucht, bleibt das Pack auf dem PC,
+   *  der es gewählt hat: hoch kommen dann nur die kleinen Beschreibungen (Figuren, Texte, Zeiten). */
+  packWanted() {
+    if (!this.plan || this.plan.complete || this.exportPending) return true;
+    const now = Date.now();
+    for (const p of this.room.players.values()) {
+      if (p.kind !== 'phone' || !p.connected || p.left) continue;
+      const r = this.ready.get(p.id);
+      if (r && r.version === this.version) {
+        if (!r.own) return true;
+      } else if (now - (this.seenAt.get(p.id) || 0) > WANT_GRACE_MS) return true;
+    }
+    return false;
+  }
+
+  /** Nach Ablauf der Frist neu senden: ab dann gilt, wer nichts gemeldet hat, als „braucht das Pack“. */
+  scheduleWantCheck() {
+    clearTimeout(this.wantTimer);
+    this.wantTimer = setTimeout(() => {
+      this.wantTimer = null;
+      if (this.plan && !this.plan.complete) {
+        this.recheckWait();
+        this.onChange();
+      }
+    }, WANT_GRACE_MS + 200);
+  }
+
+  /** Auf eine Zeile gewartet, deren Dateien jetzt niemand mehr vom Server braucht (oder die da sind)? Weiter. */
+  recheckWait() {
+    if (this.waitClip && this.clipReady(this.waitClip)) {
+      this.waitClip = null;
+      this.advance();
+    }
   }
 
   /** Eine Datei ist angekommen. Erst wenn sie vollständig ist, zählt sie (nur beim fortlaufenden Hochladen). */
@@ -258,7 +314,7 @@ export class DubSession {
 
   /** Sind die Dateien dieser Zeile da? Ohne fortlaufendes Hochladen immer ja. */
   clipReady(id) {
-    if (!this.plan || this.plan.complete) return true;
+    if (!this.plan || this.plan.complete || !this.packWanted()) return true;   // niemand braucht die Dateien vom Server
     return !!this.clips.get(id)?.have;
   }
 
@@ -277,6 +333,13 @@ export class DubSession {
     this.waitClip = null;
     this.advance();
     if (this.pack?.video && this.video.status === 'none') this.prepareVideo().catch((e) => console.warn('Video:', e.message));
+    if (this.exportPending) {
+      this.exportPending = false;
+      this.runExport().catch((e) => {
+        this.exportJob = { status: 'error', pct: 0, error: e.message, file: null, name: null };
+        this.onChange();
+      });
+    }
     this.onChange();
   }
 
@@ -307,6 +370,9 @@ export class DubSession {
     const dest = this.packDir();
     fs.rmSync(dest, { recursive: true, force: true });
     fs.renameSync(staging, dest);
+    this.fileInfo = fileInfoOf(fs.readdirSync(dest).map((name) => {
+      try { const st = fs.statSync(path.join(dest, name)); return st.isFile() ? { name, size: st.size } : null; } catch { return null; }
+    }));
     fs.rmSync(path.join(this.dir, 'web'), { recursive: true, force: true });
     fs.mkdirSync(path.join(this.dir, 'web'), { recursive: true });
     this.clearTakes();
@@ -431,10 +497,13 @@ export class DubSession {
     if (!this.pack) return { version: this.version, orderVersion: this.orderVersion, pack: null };
     const base = `/api/rooms/${this.room.code}/dub`;
     const f = (name) => (name ? `${base}/file/${encodeURIComponent(name)}` : null);
+    const done = this.plan && !this.plan.complete ? this.plan.done : null;
     return {
       version: this.version,
       orderVersion: this.orderVersion,
       pack: {
+        fp: this.fileInfo.fp, folder: this.pack.folder || null,
+        files: this.fileInfo.files.map((x) => ({ ...x, have: !done || done.has(x.name) })),
         title: this.pack.title, subtitle: this.pack.subtitle, authors: this.pack.authors, readme: this.pack.readme,
         icon: f(this.pack.icon), backing: f(this.pack.backing),
         clips: this.order.map((id) => {
@@ -507,6 +576,10 @@ export class DubSession {
   }
 
   onConnect(pid) {
+    if (!this.seenAt.has(pid) || this.ready.get(pid)?.version !== this.version) {
+      this.seenAt.set(pid, Date.now());
+      this.scheduleWantCheck();
+    }
     if (this.pause?.playerId === pid) {
       this.endPause();
       this.onChange();
@@ -521,6 +594,7 @@ export class DubSession {
   }
 
   onDisconnect(pid) {
+    this.recheckWait();
     if (this.phase !== 'playing') return;
     const t = this.turns[this.turnIndex];
     if (!t || !t.recorders.includes(pid) || this.hasTake(t.clipId, pid) || this.skipped.has(key(t.clipId, pid))) return;
@@ -538,6 +612,25 @@ export class DubSession {
       this.onChange();
     }, PAUSE_GRACE_MS);
     this.onChange();
+  }
+
+  /** Nur zuschauen (on) oder wieder mitspielen. Mitten in der Runde: die offene Zeile dieser Person fällt weg,
+   *  die Zeilen danach bekommen die anderen; wer wieder mitspielt, ist ab der nächsten Zeile dabei. */
+  setSpectator(pid, on) {
+    const running = this.phase === 'playing' || this.phase === 'paused';
+    if (on) {
+      if (this.spectators.has(pid)) return;
+      this.spectators.add(pid);
+      if (!running) return;
+      if (this.offer && (this.offer.from === pid || this.offer.to === pid)) this.dropOffer();
+      const cur = this.turns[this.turnIndex];
+      if (cur && cur.recorders.includes(pid) && !this.hasTake(cur.clipId, pid)) this.skipped.add(key(cur.clipId, pid));
+      this.buildTurns(this.turnIndex + 1);
+      if (this.pause?.playerId === pid) this.endPause();
+      this.advance();
+    } else if (this.spectators.delete(pid) && running) {
+      this.onConnect(pid);
+    }
   }
 
   endPause() {
@@ -582,7 +675,7 @@ export class DubSession {
     if (!this.pack || this.packStatus.status !== 'ready') return { ok: false, reason: 'no_pack' };
     if (!this.performed().length) return { ok: false, reason: 'no_lines' };
     // Fortlaufendes Hochladen: los geht es, sobald das Video und die erste Zeile da sind
-    if (this.plan && !this.plan.complete) {
+    if (this.plan && !this.plan.complete && this.packWanted()) {
       if (!['ready', 'original'].includes(this.video.status)) return { ok: false, reason: 'video_loading' };
       if (!this.clipReady(this.performed()[0])) return { ok: false, reason: 'pack_loading' };
     }
@@ -821,6 +914,7 @@ export class DubSession {
       ready: p.kind === 'local' ? true : this.isReady(p.id),
       progress: this.ready.get(p.id)?.version === this.version ? { have: this.ready.get(p.id).have, need: this.ready.get(p.id).need } : null,
       spectator: this.spectators.has(p.id),
+      own: !!this.ready.get(p.id)?.own && this.ready.get(p.id)?.version === this.version,
       activity: this.activity.get(p.id)?.what || null,
     }));
     const leader = this.leaderPid();
@@ -837,6 +931,7 @@ export class DubSession {
         hasBacking: !!this.pack.backing,
       } : null,
       waitClip: this.waitClip,
+      packWanted: this.packWanted(),
       offer: this.offer ? { ...this.offer, fromName: this.nameOf(this.offer.from), toName: this.nameOf(this.offer.to) } : null,
       video: { status: this.video.status, pct: Math.round(this.video.pct * 100) / 100, duration: this.video.duration },
       orderMode: this.orderMode,
@@ -978,6 +1073,7 @@ export class DubSession {
     clearTimeout(this.pauseTimer);
     clearTimeout(this.rescanTimer);
     clearTimeout(this.offerTimer);
+    clearTimeout(this.wantTimer);
   }
 }
 
@@ -1428,6 +1524,12 @@ export function installDub(app, ctx) {
         return true;
       case 'dub.export':
         if (d.phase !== 'results') return 'Exportieren geht erst am Ende.';
+        if (d.plan && !d.plan.complete) {
+          // Das Pack liegt noch auf dem PC: erst hochladen lassen, finishStream startet den Export dann
+          d.exportPending = true;
+          d.exportJob = { status: 'waiting', pct: 0, error: null, file: null, name: null };
+          return true;
+        }
         d.runExport().catch((e) => {
           d.exportJob = { status: 'error', pct: 0, error: e.message, file: null, name: null };
           broadcastState(room);
@@ -1540,14 +1642,14 @@ export function installDub(app, ctx) {
         case 'dub.ready': {
           const have = Math.max(0, Number(msg.have) || 0), need = Math.max(0, Number(msg.need) || 0);
           const before = d.isReady(player.id);
-          d.ready.set(player.id, { have, need, version: Number(msg.version) || 0 });
+          // own: hat das Pack selbst (PC mit Mod oder Zwischenspeicher im Browser), braucht nichts vom Server
+          d.ready.set(player.id, { have, need, version: Number(msg.version) || 0, own: !!msg.own });
+          d.recheckWait();
           // Nur bei Änderung von „bereit“ oder alle paar Dateien neu senden
           return reply(room, ws, before !== d.isReady(player.id) || have % 5 === 0 ? true : 'nobroadcast');
         }
         case 'dub.spectate':
-          if (d.phase !== 'hub') return reply(room, ws, 'Das geht nur in der Lobby.');
-          if (msg.on) d.spectators.add(player.id);
-          else d.spectators.delete(player.id);
+          d.setSpectator(player.id, !!msg.on);
           return reply(room, ws, true);
         case 'dub.activity':
           d.activity.set(player.id, { what: String(msg.what || '').slice(0, 20), at: Date.now() });

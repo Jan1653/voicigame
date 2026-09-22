@@ -354,6 +354,7 @@ export class Room {
       .sort((a, b) => a.joinOrder - b.joinOrder)
       .map((p) => ({
         id: p.id, name: p.name, kind: p.kind, slot: p.slot, connected: p.connected,
+        game: p.client === 'game',   // tritt aus dem eigenen Spiel mit Mod bei
         progress: p.kind === 'phone' ? this.progressFor(p) : null,
       }));
     const counts = {};

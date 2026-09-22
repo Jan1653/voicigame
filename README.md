@@ -7,11 +7,13 @@ voicigame is two parts: a small mod that runs inside the game, and a web server 
 ## What you can do
 
 - **Gameshow:** everyone imitates the same clips. Phone players hear the clip on their phone, tap **Go** and record. The game plays their take through its own microphone channel, so the jury rates it exactly like a player at the PC. If a take is still on its way, the game waits for it.
-- **Dub mode:** pick a dub pack, everyone claims characters and records their lines while the video plays in the browser, like in the game. At the end you watch the result together on every device and export it as a video. Started from the game, the round begins as soon as the video and the first line are up: the rest of the pack keeps uploading while you play, and a line that is still on its way makes the round wait a moment.
+- **Dub mode:** pick a dub pack, everyone claims characters and records their lines while the video plays in the browser, like in the game. At the end you watch the result together on every device and export it as a video. Started from the game, the pack stays on your PC as long as nobody needs it: players who join from their own game use their own copy, and browsers keep packs they have loaded before. Only when somebody needs the files, or you export a video, does the pack go up to the server. The round can start while it is still on its way.
 - **Pass a line on:** in a dub round you can give the line you are on to somebody else. They have to take it, and until they answer the round waits. People can also join a round that is already running, and the leader can remove somebody mid-round.
-- **Your recordings stay with you:** every take you record in the browser is also kept on your own device. Dub takes are kept as a small video — the bit of the pack's video the line belongs to, with your voice on it — so you can watch them, not just listen. A button at the bottom of the page lists them, plays them back, saves them as a file and deletes them again, one by one or all at once.
+- **Your recordings stay with you:** every take you record in the browser is also kept on your own device. Dub takes are kept as a small video (the bit of the pack's video the line belongs to, with your voice on it), so you can watch them, not just listen. A button at the bottom of the page lists them, plays them back, saves them as a file and deletes them again, one by one or all at once.
 - **Dub without the game:** click **Create your own room** on the website, upload a pack (ZIP or folder) and play the whole dub round online.
-- **Join from another PC:** with the mod installed, choose **Join lobby** in the game, type the code and play with your own microphone.
+- **Join from another PC:** with the mod installed, choose **Join lobby** in the game, type the code and play with your own microphone. In dub mode you play in your own game: the mod finds the pack on your PC or downloads it once into your pack folder, and you record your lines there.
+- **Waveforms like in the game:** the website measures and draws them the way the game does, and the dub background moves like the game's. In dub mode the host decides who sees the other players' waveforms: only the PC, everyone, or nobody.
+- **Install as an app:** add the website to your home screen (the button at the bottom, on iPhone through Safari's Share menu). It then opens like an app, without the address bar.
 - **Live picture:** players who are not in the same room see the game's screen and hear its sound on their phone (the stage, the jury, the scores). The sound mutes itself while you record.
 - **Three looks** for the website, picked from a menu at the bottom: like the game, dark or light. The choice is remembered.
 - **25 languages** on the website and in the mod. Both start in the language of the device. Switch the website at the bottom of the page, the mod at the bottom of the Voicigame menu.
@@ -50,7 +52,7 @@ To remove the mod, delete the `Voicigame=` line (or the whole `override.cfg` if 
 
 **Updates:** installed by hand, the mod updates itself. On start it asks the server for a newer version, downloads the changed files, checks them and replaces the old ones. The new version runs from the next start, the Voicigame menu tells you. If the folder is write protected, it only shows that a new version is out. Installed with Voicitool, Voicitool does the updates instead.
 
-Tested with version 0.5.3 of the game, with and without the Steam multiplayer mod.
+Tested with versions 0.5.2 and 0.5.3 of the game, with and without the Steam multiplayer mod. The game files of the Linux version are the same as on Windows, so it should work there too, but it isn't tested yet.
 
 ## Play
 
@@ -104,7 +106,7 @@ ffmpeg is optional. Without it, dub videos only play in some browsers and the vi
 - Rooms only live in the server's memory. Restarting the server ends running rooms.
 - If the server is full, new rooms wait in a queue (first come, first served) and start on their own as soon as there is space. Rooms that are already running are not affected.
 - The judging is the game's own. For very short clips it sometimes gives low scores even for good takes. That happens without the mod too.
-- Joining a gameshow that is already running only gets you the live picture: the game fixes its group members before the first round, so it cannot score somebody who arrives later. In dub mode latecomers play along from the next line.
+- Joining a gameshow that is already running only gets you the live picture: the game fixes its group members before the first round, so it cannot score somebody who arrives later. In dub mode latecomers play along from the next line, and PC players who join a running round skip the lines that are already done.
 - Recordings on phones can start a little early or late, depending on the phone's audio delay. In dub mode you can drag your take into place on the waveform.
 
 ## What the server counts
@@ -116,7 +118,7 @@ So I can see whether the server is fast enough and what to work on, it keeps a s
 - `mod/voicigame/`: the mod. Raise `VERSION` in `main.gd` with every change (fixes 0.2.1, new features 0.3.0), Voicitool shows it. `main.gd` hooks into the menus, `bridge.gd` talks to the server, `show_hook.gd` and `dub_hook.gd` feed web takes into the game, `join_screen.gd` is the join client, `stream.gd` sends the live picture.
 - `server/`: Node.js (express, ws, qrcode). `src/room.js` holds rooms and players, `src/dub.js` the dub mode, `src/stream.js` passes the live picture on, `src/stats.js` collects the usage numbers and `src/statsview.js` prints them. The phone page is `public/index.html` with `app.js` and `dub.js`, plus `takes.js` and `takevideo.js` (recordings kept on the device, with the video of the line), `theme.js` and `ui.js` (the menus at the bottom).
 - Translations: German is the source in the code. Website texts are in `server/public/lang/`, mod texts in `mod/voicigame/lang.json`. `node tools/build_mod_lang.js --check` lists mod texts without a translation.
-- Tests drive the real game: `tools/run_test.ps1 <plan>` with the plans `show`, `join`, `dub` and simulated phones (`tools/fake-phone.js`, `tools/fake-dub-phone.js`) or a simulated host (`tools/fake-host.js`). The game folder comes from `VG_GAME_DIR` or a line in `tools/game_dir.txt` (not in the repository), otherwise the default Steam folder.
+- Tests drive the real game: `tools/run_test.ps1 <plan>` with the plans `show`, `join`, `dub` and simulated phones. `tools/run_duo.ps1` starts two games at once, a host and a second copy (`VG_MEMBER_DIR`, own data folder) that joins and plays the dub round in its own game (`tools/fake-phone.js`, `tools/fake-dub-phone.js`) or a simulated host (`tools/fake-host.js`). The game folder comes from `VG_GAME_DIR` or a line in `tools/game_dir.txt` (not in the repository), otherwise the default Steam folder.
 
 ## Contributing
 

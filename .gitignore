@@ -3,6 +3,7 @@ node_modules/
 .DS_Store
 Thumbs.db
 tools/last_run/
+tools/last_run_duo/
 tools/game_dir.txt
 deploy/.env
 deploy/.state/

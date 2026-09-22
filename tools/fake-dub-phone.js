@@ -189,13 +189,17 @@ function onState(s) {
     packVersion = d.version;
     loadPack(d.version).catch((e) => log('FEHLER Pack', e.message));
   }
-  if (d.phase === 'hub' && pack && !claimed && process.env.CLAIM) {
-    claimed = true;
+  if (d.phase === 'hub' && pack && process.env.CLAIM) {
+    // Figuren kommen mit den Beschreibungen des Packs nach und nach: jede, die frei auftaucht, nehmen (on: true schadet doppelt nicht)
     const want = process.env.CLAIM === 'alle' ? d.characters.map((c) => c.name) : process.env.CLAIM.split(',').map((x) => x.trim());
-    for (const c of want) wsSend({ type: 'dub.claim', character: c });
-    if (LEAD && process.env.CHRONO === '1') wsSend({ type: 'dub.settings', chrono: true });
-    if (LEAD && process.env.WAVES) wsSend({ type: 'dub.settings', waves: process.env.WAVES });
-    log('Claime', want.join(', '));
+    const free = d.characters.filter((c) => want.includes(c.name) && !c.claimedBy).map((c) => c.name);
+    for (const c of free) wsSend({ type: 'dub.claim', character: c, on: true });
+    if (!claimed) {
+      claimed = true;
+      if (LEAD && process.env.CHRONO === '1') wsSend({ type: 'dub.settings', chrono: true });
+      if (LEAD && process.env.WAVES) wsSend({ type: 'dub.settings', waves: process.env.WAVES });
+      log('Claime', want.join(', '));
+    }
   }
   if (LEAD && d.phase === 'hub' && d.canStart?.ok && d.players.length >= PLAYERS && !d.turns.length && !startTimer) {
     // kurz warten, damit alle noch claimen können

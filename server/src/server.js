@@ -436,6 +436,7 @@ wss.on('connection', (ws, req) => {
       } else if (msg.name) p.name = String(msg.name).slice(0, 24) || p.name;
       role = 'phone';
       player = p;
+      player.client = msg.client === 'game' ? 'game' : 'web';   // PC mit Mod oder Browser
       if (player.ws && player.ws !== ws) player.ws.close(4000, 'replaced');
       player.ws = ws;
       player.connected = true;
