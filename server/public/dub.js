@@ -1292,6 +1292,62 @@
     return `<button type="button" class="cv-btn ${extra}" data-act="${act}" ${enabled ? '' : 'disabled'}>${label}</button>`;
   }
 
+  /* ---------- Zeile abgeben ---------- */
+
+  /** Wem man die laufende Zeile anbieten kann: verbunden, spielt mit, hat sie nicht schon. */
+  function giveTargets(d) {
+    const has = new Set((d.turn?.recorders || []).map((r) => r.id));
+    return S.state.players.filter((p) => p.kind === 'phone' && p.connected && p.id !== S.playerId
+      && !has.has(p.id) && !d.players.find((x) => x.id === p.id)?.spectator);
+  }
+
+  /** Banner über der Zeile: ein Angebot liegt für mich vor, oder meins läuft noch.
+   *  Namen kommen wie überall per textContent hinein, nie als HTML. */
+  function offerHtml(d) {
+    const o = d.offer;
+    if (!o) return '';
+    const buttons = o.to === S.playerId
+      ? `<div class="dub-btns">
+          <button type="button" class="cv-btn" data-act="offer-yes">${t('Übernehmen')}</button>
+          <button type="button" class="cv-pill" data-act="offer-no">${t('Lieber nicht')}</button>
+        </div>`
+      : o.from === S.playerId
+        ? `<div class="dub-btns"><button type="button" class="cv-pill" data-act="offer-cancel">${t('Zurückziehen')}</button></div>`
+        : '';
+    return `<div class="dub-offer"><p data-f="offer"></p>${buttons}</div>`;
+  }
+
+  function fillOffer(box, d) {
+    const o = d.offer;
+    const el = box.querySelector('[data-f="offer"]');
+    if (!o || !el) return;
+    el.textContent = o.to === S.playerId ? t(`${pname(o.from)} möchte dir diese Zeile geben.`)
+      : o.from === S.playerId ? t(`Angeboten an ${pname(o.to)}. Wartet auf die Antwort …`)
+      : t(`${pname(o.from)} bietet die Zeile ${pname(o.to)} an.`);
+  }
+
+  /** Auswahl, wer die Zeile bekommen soll. */
+  function openGive() {
+    const d = dv();
+    const box = $id('options');
+    box.innerHTML = `<div class="dub-options-box" role="dialog" aria-modal="true">
+      <h3>${t('Zeile abgeben')}</h3>
+      <p class="dub-note">${t('Die Person muss die Zeile annehmen. Solange wartet die Runde.')}</p>
+      <div class="dub-give" data-f="list"></div>
+      <button type="button" class="cv-btn" data-act="options-close">${t('Zurück')}</button>
+    </div>`;
+    const list = box.querySelector('[data-f="list"]');
+    const targets = giveTargets(d);
+    if (!targets.length) list.append(node('p', 'dub-note', t('Gerade ist niemand da, der die Zeile nehmen könnte.')));
+    for (const p of targets) {
+      const b = node('button', 'cv-btn', p.name);
+      b.type = 'button';
+      b.dataset.give = p.id;
+      list.append(b);
+    }
+    box.hidden = false;
+  }
+
   function renderRemote() {
     const d = dv();
     const box = $id('remote');
@@ -1299,8 +1355,9 @@
     const turn = d.turn;
     const clip = currentClip();
     const busy = D.mode === 'first' || D.mode === 'send';
-    if (same(box, JSON.stringify(['r', D.mode, D.mine, D.attempts, !!D.take, D.turnKey, d.done, d.total, d.turn, d.players.map((p) => [p.id, p.activity, p.spectator]), S.state.players.map((p) => p.name), D.opts.oneTake, D.opts.quietRec, d.turns.length, clip?.id]))) return;
+    if (same(box, JSON.stringify(['r', D.mode, D.mine, D.attempts, !!D.take, D.turnKey, d.done, d.total, d.turn, d.offer, d.players.map((p) => [p.id, p.activity, p.spectator]), S.state.players.map((p) => p.name), D.opts.oneTake, D.opts.quietRec, d.turns.length, clip?.id]))) return;
     let html = `<h3>${turn ? t(`Zeile ${d.done + 1} von ${d.total}`) : ''}</h3>`;
+    html += offerHtml(d);
     html += `<p class="dub-speaker">${clip?.chars?.length ? SPEAKER : ''}<span data-f="chars"></span></p>`;
     if (D.mine) {
       const rec = D.mode === 'record';
@@ -1316,13 +1373,16 @@
       <button type="button" class="cv-pill dub-quiet" data-act="quiet" aria-pressed="${!!D.opts.quietRec}" ${rec ? 'disabled' : ''}
         title="${t('Beim Aufnehmen läuft die Originalstimme nicht mit, damit sie nicht ins Mikro kommt. Am Handy ist das von Anfang an so.')}">
         ${D.opts.quietRec ? t('Stimme beim Aufnehmen: aus') : t('Stimme beim Aufnehmen: an')}</button>`;
+      if (!d.offer && giveTargets(d).length) html += `<button type="button" class="cv-pill" data-act="give">${t('Zeile abgeben')}</button>`;
       if (D.mode === 'send') html += `<p class="dub-who">${t('Deine Aufnahme wird gesendet …')}</p>`;
     } else {
       const who = turn?.recorders || [];
       const open = who.filter((r) => !r.done && !r.skipped);
       const act = (id) => ({ listen: t('hört zu'), record: t('nimmt auf'), review: t('hört nach') })[d.players.find((p) => p.id === id)?.activity] || '';
       html += `<p class="dub-who" data-f="who"></p>`;
-      html += `<div class="dub-btns">${btn('listen', t('Clip anhören'), !!clip && !busy && D.mode !== 'listen')}</div>`;
+      html += `<div class="dub-btns">${btn('listen', t('Clip anhören'), !!clip && !busy && D.mode !== 'listen')}`;
+      if (isLeader() && turn && !d.offer && giveTargets(d).length) html += `<button type="button" class="cv-pill" data-act="give">${t('Zeile abgeben')}</button>`;
+      html += '</div>';
       html += `<ul class="dub-order-mini" data-f="order"></ul>`;
       box.innerHTML = html;
       const w = box.querySelector('[data-f="who"]');
@@ -1338,11 +1398,13 @@
       const nx = nextMine(d);
       if (nx) ol.after(node('p', 'dub-who small', nx));
       box.querySelector('[data-f="chars"]').textContent = (clip?.chars || []).join(', ');
+      fillOffer(box, d);
       renderOnscreen(d, open);
       return;
     }
     box.innerHTML = html;
     box.querySelector('[data-f="chars"]').textContent = (clip?.chars || []).join(', ');
+    fillOffer(box, d);
     renderOnscreen(d, []);
   }
 
@@ -1584,14 +1646,40 @@
       <label class="vol">${t('Clip beim Aufnehmen')}<input type="range" min="0" max="1" step="0.05" data-vol="clipVol" value="${o.clipVol}"><span>${Math.round(o.clipVol * 100)} %</span></label>
       <label class="vol">${t('Hintergrundmusik')}<input type="range" min="0" max="1" step="0.05" data-vol="backVol" value="${o.backVol}"><span>${Math.round(o.backVol * 100)} %</span></label>
       <p class="dub-note">${t('Tipp: Mit Kopfhörern klingt die Aufnahme am saubersten.')}</p>
+      <div data-f="people"></div>
       <button type="button" class="cv-btn" data-act="options-close">${t('Zurück')}</button>
     </div>`;
+    // Die Spielleitung kann auch mitten in der Runde jemanden entfernen
+    const people = box.querySelector('[data-f="people"]');
+    const others = S.state.players.filter((p) => p.kind === 'phone' && p.id !== S.playerId);
+    if (isLeader() && others.length) {
+      people.append(node('h3', null, t('Mitspieler')));
+      const ul = node('ul', 'player-list');
+      for (const p of others) {
+        const li = node('li');
+        li.append(node('span', null, p.name + (p.connected ? '' : ' ' + t('(getrennt)'))));
+        const k = node('button', 'dub-kick', '✕');
+        k.type = 'button';
+        k.dataset.kick = p.id;
+        k.title = t('Entfernen');
+        k.setAttribute('aria-label', t('Entfernen'));
+        li.append(k);
+        ul.append(li);
+      }
+      people.append(ul);
+    }
     box.hidden = false;
   }
 
   /* ================= Bedienung ================= */
 
   async function onClick(e) {
+    const give = e.target.closest('[data-give]');
+    if (give) {
+      wsSend({ type: 'dub.offer', to: give.dataset.give });
+      $id('options').hidden = true;
+      return;
+    }
     const kick = e.target.closest('[data-kick]');
     if (kick) {
       if (confirm(t(`${pname(kick.dataset.kick)} wirklich entfernen?`))) wsSend({ type: 'dub.kick', playerId: kick.dataset.kick });
@@ -1655,6 +1743,10 @@
       }
       case 'hub': return wsSend({ type: 'dub.hub' });
       case 'options': return openOptions();
+      case 'give': return openGive();
+      case 'offer-yes': return wsSend({ type: 'dub.offer.take', ok: true });
+      case 'offer-no': return wsSend({ type: 'dub.offer.take', ok: false });
+      case 'offer-cancel': return wsSend({ type: 'dub.offer.cancel' });
       case 'options-close':
         $id('options').hidden = true;
         return renderStudio();

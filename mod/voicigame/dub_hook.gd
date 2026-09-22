@@ -102,6 +102,8 @@ var _hub: Control
 var _banner: PanelContainer
 var _banner_text: Label
 var _banner_btns: VBoxContainer
+var _people_box: VBoxContainer   # Mitspieler während der Runde: entfernen, Zeile abgeben
+var _people_open := false
 var _hub_title: Label
 var _hub_upload: Label
 var _hub_status: Label
@@ -1294,6 +1296,10 @@ func _build_ui() -> void:
 	_banner_btns = VBoxContainer.new()
 	_banner_btns.add_theme_constant_override("separation", 6)
 	brow.add_child(_banner_btns)
+	_people_box = VBoxContainer.new()
+	_people_box.add_theme_constant_override("separation", 6)
+	_people_box.hide()
+	brow.add_child(_people_box)
 	_banner.hide()
 
 
@@ -1365,6 +1371,7 @@ func _refresh_banner_buttons() -> void:
 		var skip := _small_button(_t("Zeile überspringen"), _skip_line)
 		skip.disabled = cur_clip == "" or _skip_sent == cur_clip
 		_banner_btns.add_child(skip)
+		_banner_btns.add_child(_small_button(_t("Mitspieler ausblenden") if _people_open else _t("Mitspieler"), _toggle_people))
 		return
 	var ex = d.get("export")
 	var st := str(ex.get("status", "")) if ex is Dictionary else ""
@@ -1390,6 +1397,52 @@ func _leave_hub() -> void:
 	var m = get_node_or_null("/root/M")
 	if m:
 		m.world.return_to_dub_selection()
+
+
+## Mitspieler-Liste in der Leiste auf- und zuklappen.
+func _toggle_people() -> void:
+	_people_open = not _people_open
+	_last_sig = ""
+	_refresh_people()
+	_refresh_banner_buttons()
+
+
+## Während der Runde: wer mitspielt, entfernen und Zeilen abgeben.
+func _refresh_people() -> void:
+	if not is_instance_valid(_people_box):
+		return
+	_people_box.visible = _people_open and _started and not _finished
+	for c in _people_box.get_children():
+		c.queue_free()
+	if not _people_box.visible:
+		return
+	var d := _dub()
+	var offer = d.get("offer")
+	if offer is Dictionary:
+		var l := _label(_t("{} hat {} eine Zeile angeboten.", [str(offer.get("fromName", "")), str(offer.get("toName", ""))]), 15, false, Color(1.0, 0.82, 0.45))
+		l.custom_minimum_size.x = 214
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_people_box.add_child(l)
+	var web: Array = bridge.web_players()
+	if web.is_empty():
+		_people_box.add_child(_label(_t("Gerade spielt niemand im Browser mit."), 15, false, Color(0.8, 0.85, 0.9)))
+		return
+	for p in web:
+		var pid := str(p.get("id", ""))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var nm := _label(("● " if p.get("connected", false) else "○ ") + str(p.get("name", "?")), 15, false)
+		nm.custom_minimum_size.x = 84
+		row.add_child(nm)
+		if p.get("connected", false):
+			row.add_child(_small_button(_t("Zeile geben"), _give_line.bind(pid)))
+		row.add_child(_small_button(_t("Wirklich?") if _kick_armed == pid else _t("Entfernen"), _on_kick.bind(pid)))
+		_people_box.add_child(row)
+
+
+## Die laufende Zeile dieser Person anbieten. Sie muss sie annehmen.
+func _give_line(pid: String) -> void:
+	bridge._send({"type": "dub.offer", "to": pid})
 
 
 ## Spieler entfernen: erster Klick fragt nach, zweiter entfernt. Nach 4 s ohne zweiten Klick zurück.
@@ -1532,6 +1585,7 @@ func _refresh() -> void:
 		"video_loading": _t("Das Video wird noch vorbereitet."),
 		"pack_loading": _t("Die erste Zeile wird noch hochgeladen."),
 	}.get(reason, "")
+	_refresh_people()
 	_check_export()
 	if _finished:
 		var ex = d.get("export")

@@ -183,6 +183,19 @@ body.dub-dark .sky { opacity: 0; transition: opacity .6s; }
 .dub-opt small { display: block; color: #aaa; font-size: .88rem; }
 .dub-options-box label.vol { display: grid; grid-template-columns: 9em 1fr 3.5em; gap: 10px; align-items: center; font-weight: 400; }
 
+.dub-options-box .player-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.dub-options-box .player-list li { display: flex; align-items: center; gap: 10px; }
+.dub-options-box .player-list li span { flex: 1; }
+.dub-give { display: grid; gap: 8px; }
+
+/* Zeile abgeben: Angebot über der laufenden Zeile */
+.dub-offer {
+  display: grid; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px;
+  background: rgba(255, 196, 88, .16); border: 1px solid rgba(255, 196, 88, .5);
+}
+.dub-offer p { margin: 0; font-size: 1rem; }
+.dub-offer .dub-btns { grid-template-columns: 1fr 1fr; }
+
 /* Große Ansicht beim Anschauen */
 .dub-studio.expanded .dub-tv {
   position: fixed; inset: 0; z-index: 25; background: #111; display: flex; align-items: center; justify-content: center; padding: 1.5vw;

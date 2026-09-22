@@ -39,6 +39,7 @@ function folderBytes(dir) {
 }
 const MAX_TAKE = (Number(process.env.DUB_MAX_TAKE_MB) || 25) * MB;
 const PAUSE_GRACE_MS = 20000;
+const OFFER_MS = 60000;        // so lange steht ein Angebot, eine Zeile abzugeben
 const WATCH_LEAD_MS = 2500;
 const SR = 44100;
 const rid = (n = 6) => crypto.randomBytes(n).toString('hex');
@@ -87,6 +88,8 @@ export class DubSession {
     this.startedAt = null;             // Beginn der laufenden Dub-Runde (nur für die Statistik)
     this.plan = null;                  // fortlaufendes Hochladen aus dem Spiel, siehe beginUpload
     this.waitClip = null;              // Zeile, deren Dateien noch unterwegs sind
+    this.offer = null;                 // laufende Zeile jemand anderem angeboten, siehe offerLine
+    this.offerTimer = null;
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -481,6 +484,7 @@ export class DubSession {
   }
 
   onPlayerRemoved(pid) {
+    if (this.offer && (this.offer.from === pid || this.offer.to === pid)) this.dropOffer();
     for (const [c, owner] of this.claims) if (owner === pid) this.claims.delete(c);
     this.spectators.delete(pid);
     this.ready.delete(pid);
@@ -497,6 +501,13 @@ export class DubSession {
   onConnect(pid) {
     if (this.pause?.playerId === pid) {
       this.endPause();
+      this.onChange();
+    }
+    // Mitten in der Runde dazugekommen: ab der nächsten Zeile mitspielen.
+    // Wer schon Zeilen in dieser Runde hat, behält sie.
+    if ((this.phase === 'playing' || this.phase === 'paused') && !this.spectators.has(pid)
+        && !this.turns.some((t) => t.recorders.includes(pid))) {
+      this.buildTurns(this.turnIndex + 1);
       this.onChange();
     }
   }
@@ -626,6 +637,7 @@ export class DubSession {
       return;
     }
     this.waitClip = null;
+    if (this.offer && this.offer.clipId !== t.clipId) this.dropOffer();
     // Wer dran ist und gerade nicht verbunden ist: warten (Pause)
     for (const pid of t.recorders) {
       const p = this.room.players.get(pid);
@@ -635,6 +647,74 @@ export class DubSession {
         break;
       }
     }
+  }
+
+  /* ---------- Zeile abgeben ---------- */
+
+  /** Wer diese Zeile noch sprechen muss. */
+  openRecorders(t) {
+    if (!t) return [];
+    return t.recorders.filter((pid) => !this.hasTake(t.clipId, pid) && !this.skipped.has(key(t.clipId, pid)));
+  }
+
+  /** Die laufende Zeile jemand anderem anbieten. Angenommen wird sie erst von der anderen Person.
+   *  byPid: wer anbietet (null = das Spiel am PC), dann gibt sie die erste offene Person ab. */
+  offerLine(byPid, toPid) {
+    const t = this.turns[this.turnIndex];
+    if (!t || (this.phase !== 'playing' && this.phase !== 'paused')) return 'Gerade läuft keine Zeile.';
+    const open = this.openRecorders(t);
+    if (!open.length) return 'Diese Zeile ist schon durch.';
+    const from = open.includes(byPid) ? byPid : !byPid || this.isLeader(byPid) ? open[0] : null;
+    if (!from) return 'Diese Zeile gehört dir nicht.';
+    const to = this.room.players.get(String(toPid));
+    // Annehmen geht am Handy und im Browser. Wer am PC spielt, kann Zeilen abgeben, aber keine annehmen.
+    if (!to || to.kind !== 'phone' || !to.connected || to.left) return 'Diese Person ist gerade nicht da.';
+    if (to.id === from) return 'Das ist dieselbe Person.';
+    if (t.recorders.includes(to.id)) return 'Die Person hat diese Zeile schon.';
+    if (this.spectators.has(to.id)) return 'Die Person schaut nur zu.';
+    clearTimeout(this.offerTimer);
+    this.offer = { clipId: t.clipId, from, to: to.id, until: Date.now() + OFFER_MS };
+    this.offerTimer = setTimeout(() => {
+      if (!this.offer) return;
+      this.offer = null;
+      this.onChange();
+    }, OFFER_MS);
+    this.onEvent({ type: 'dub.offer', clipId: t.clipId, from, fromName: this.nameOf(from), to: to.id });
+    return true;
+  }
+
+  /** Angebot annehmen (ok) oder ablehnen. */
+  takeLine(pid, ok) {
+    const o = this.offer;
+    if (!o || o.to !== pid) return 'Dieses Angebot gibt es nicht mehr.';
+    this.dropOffer();
+    if (!ok) {
+      this.onEvent({ type: 'dub.offer.no', to: pid, name: this.nameOf(pid), from: o.from });
+      return true;
+    }
+    const t = this.turns[this.turnIndex];
+    if (!t || t.clipId !== o.clipId) return 'Diese Zeile ist schon vorbei.';
+    // Die Zeile wechselt: wer sie abgegeben hat, muss sie nicht mehr sprechen
+    t.recorders = t.recorders.filter((x) => x !== o.from).concat(t.recorders.includes(pid) ? [] : [pid]);
+    this.skipped.delete(key(t.clipId, pid));
+    this.activity.delete(o.from);
+    this.onEvent({ type: 'dub.offer.yes', clipId: t.clipId, from: o.from, to: pid, name: this.nameOf(pid) });
+    this.advance();
+    return true;
+  }
+
+  /** Angebot zurückziehen (auch von selbst, wenn die Zeile weiterzieht). */
+  cancelOffer(byPid) {
+    if (!this.offer) return true;
+    if (byPid && byPid !== this.offer.from && !this.isLeader(byPid)) return 'Das Angebot ist nicht deins.';
+    this.dropOffer();
+    return true;
+  }
+
+  dropOffer() {
+    clearTimeout(this.offerTimer);
+    this.offerTimer = null;
+    this.offer = null;
   }
 
   /** clipId: nur überspringen, wenn diese Zeile noch dran ist (doppelt geklickt überspringt sonst zwei). */
@@ -658,6 +738,7 @@ export class DubSession {
   }
 
   toHub() {
+    this.dropOffer();
     this.endRound();
     this.endPause();
     this.phase = 'hub';
@@ -744,6 +825,7 @@ export class DubSession {
         hasBacking: !!this.pack.backing,
       } : null,
       waitClip: this.waitClip,
+      offer: this.offer ? { ...this.offer, fromName: this.nameOf(this.offer.from), toName: this.nameOf(this.offer.to) } : null,
       video: { status: this.video.status, pct: Math.round(this.video.pct * 100) / 100, duration: this.video.duration },
       orderMode: this.orderMode,
       chrono: this.chrono,
@@ -877,6 +959,7 @@ export class DubSession {
     this.endRound();
     clearTimeout(this.pauseTimer);
     clearTimeout(this.rescanTimer);
+    clearTimeout(this.offerTimer);
   }
 }
 
@@ -1345,6 +1428,12 @@ export function installDub(app, ctx) {
       case 'dub.time':
         send(ws, { type: 'dub.time', t: Number(msg.t) || 0, server: Date.now() });
         return 'nobroadcast';
+      case 'dub.offer':
+        return d.offerLine(pid, String(msg.to || ''));
+      case 'dub.offer.take':
+        return d.takeLine(pid, !!msg.ok);
+      case 'dub.offer.cancel':
+        return d.cancelOffer(pid);
       case 'dub.chat': {
         const text = String(msg.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
         if (!text) return 'nobroadcast';
