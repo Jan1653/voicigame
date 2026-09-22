@@ -17,10 +17,22 @@ Get-ChildItem $mod -File | Where-Object { $_.Extension -eq ".gd" -or $_.Name -eq
   Copy-Item -Destination (Join-Path $stage "voicigame")
 Copy-Item (Join-Path $PSScriptRoot "zip\*") $stage
 Copy-Item (Join-Path $repo "LICENSE") (Join-Path $stage "LICENSE.txt")
-# .NET statt Compress-Archive: das schreibt in Windows PowerShell 5 Pfade mit \ (verstößt gegen das ZIP-Format)
-Add-Type -AssemblyName System.IO.Compression.FileSystem
+# Jeden Eintrag selbst anlegen, mit / als Trenner: Compress-Archive und CreateFromDirectory schreiben in
+# Windows PowerShell 5 Pfade mit \ (verstößt gegen das ZIP-Format, unter Linux entsteht dann kein Ordner)
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $tmp = "$zip.tmp"
-[IO.Compression.ZipFile]::CreateFromDirectory($stage, $tmp, [IO.Compression.CompressionLevel]::Optimal, $false)
+if (Test-Path $tmp) { Remove-Item $tmp -Force }
+$fs = [IO.File]::Open($tmp, [IO.FileMode]::CreateNew)
+$archive = New-Object IO.Compression.ZipArchive($fs, [IO.Compression.ZipArchiveMode]::Create)
+try {
+  Get-ChildItem $stage -File -Recurse | ForEach-Object {
+    $name = $_.FullName.Substring($stage.Length + 1).Replace('\', '/')
+    [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $_.FullName, $name, [IO.Compression.CompressionLevel]::Optimal) | Out-Null
+  }
+} finally {
+  $archive.Dispose()
+  $fs.Dispose()
+}
 Move-Item $tmp $zip -Force   # gleiche Version: neu bauen
 Remove-Item $stage -Recurse -Force
 "$zip ($([math]::Round((Get-Item $zip).Length / 1KB)) KB, Version $version)"
