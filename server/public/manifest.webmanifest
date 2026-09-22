@@ -1,0 +1,17 @@
+{
+  "name": "Voicigame",
+  "short_name": "Voicigame",
+  "description": "Play The Choicer Voicer with friends: join from your phone or browser with a room code.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#4cc3f2",
+  "theme_color": "#4cc3f2",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
