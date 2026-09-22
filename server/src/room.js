@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { watcherCount } from './stream.js';
+import { observe } from './stats.js';
 
 const rid = (bytes = 8) => crypto.randomBytes(bytes).toString('hex');
 
@@ -44,6 +45,8 @@ export class Room {
     this.game = 'show'; // show | dub
     this.show = { round: null, status: '', scores: [], ranking: null };
     this.dub = null; // Dub-Modus, siehe dub.js
+    this.createdAt = Date.now();
+    this.phonesJoined = 0;   // wie viele Handys/Browser insgesamt da waren (für die Statistik)
     this.touch();
   }
 
@@ -65,6 +68,7 @@ export class Room {
       leadIn: Math.min(2, Math.max(0, Number(leadIn) || 0)),
       recorders: wanted,
       got: {},
+      at: Date.now(),
     };
     return this.show.round;
   }
@@ -110,8 +114,10 @@ export class Room {
       connected: false,
       left: false,
       cached: new Set(),
+      joinedAt: Date.now(),
     };
     this.players.set(p.id, p);
+    this.phonesJoined++;
     this.recompute();
     return p;
   }
@@ -143,9 +149,17 @@ export class Room {
     this.recompute();
   }
 
+  /** Für die Statistik: wie lange jemand im Raum war (nur die Dauer, kein Name). */
+  countTime(p) {
+    if (!p || p.kind !== 'phone' || p.counted) return;
+    p.counted = true;
+    observe('player_min', (Date.now() - (p.joinedAt || this.createdAt)) / 60_000);
+  }
+
   removePlayer(id) {
     const p = this.players.get(id);
     if (!p) return;
+    this.countTime(p);
     for (const [c, owner] of this.claims) if (owner === id) this.claims.delete(c);
     if (this.phase === 'playing' && this.schedule.some((e) => e.playerId === id)) {
       p.left = true; // bleibt für die Ergebnisliste erhalten
@@ -354,7 +368,17 @@ export class Room {
     return view;
   }
 
+  /** Für die Statistik: Raum ist vorbei (auch beim Beenden des Servers, dann ohne Aufräumen). */
+  recordLife() {
+    if (this.recorded) return;
+    this.recorded = true;
+    for (const p of this.players.values()) this.countTime(p);
+    observe('room_min', (Date.now() - this.createdAt) / 60_000);
+    observe('room_players', this.phonesJoined);
+  }
+
   destroy() {
+    this.recordLife();
     try {
       fs.rmSync(this.dir, { recursive: true, force: true });
     } catch {}

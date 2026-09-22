@@ -5,7 +5,7 @@ import express from 'express';
 import { readPack, orderClips, extractPackZip, writeZip, wavInfo, safeName } from './dubfiles.js';
 import { checkStorage, storageAdd, storageLeft } from './limits.js';
 import { ffmpeg, findFfmpeg, probe } from './ffjobs.js';
-import { count as countStat } from './stats.js';
+import { count as countStat, observe as observeStat } from './stats.js';
 
 /* =====================================================================
  * Dub-Modus (Synchronisieren): ein Video, jeder spricht die Zeilen seiner Figuren.
@@ -84,6 +84,7 @@ export class DubSession {
     this.chrono = false;               // „der Reihe nach“
     this.spectators = new Set();
     this.phase = 'hub';                // hub | playing | paused | results
+    this.startedAt = null;             // Beginn der laufenden Dub-Runde (nur für die Statistik)
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -185,6 +186,9 @@ export class DubSession {
       this.reorder();
     }
     this.packStatus = { status: 'ready', error: null, note: null };
+    countStat('packs');
+    observeStat('pack_mb', folderBytes(dest) / MB);
+    observeStat('pack_lines', pack.clips.length);
     this.prepareVideo().catch((e) => console.warn('Video:', e.message));
     this.onChange();
   }
@@ -221,6 +225,7 @@ export class DubSession {
     const info = findFfmpeg() ? await probe(src) : null;
     if (version !== this.version) return;
     this.video.duration = info?.duration || 0;
+    if (this.video.duration) observeStat('video_min', this.video.duration / 60);
     this.video.height = info?.video?.height || 0;
     this.video.codec = info?.video?.codec || null;
     const codec = this.video.codec;
@@ -465,6 +470,7 @@ export class DubSession {
     if (this.turnIndex >= this.turns.length) {
       this.endPause();
       this.phase = 'results';
+      this.endRound();
       this.onEvent({ type: 'dub.results' });
       return;
     }
@@ -492,7 +498,17 @@ export class DubSession {
     return true;
   }
 
+  /** Für die Statistik: eine Dub-Runde ist vorbei (durchgespielt oder abgebrochen).
+   *  Gemessen werden nur frisch gestartete Runden, „Weitermachen“ zählt zur laufenden. */
+  endRound() {
+    if (!this.startedAt) return;
+    observeStat('dub_min', (Date.now() - this.startedAt) / 60_000);
+    observeStat('dub_lines', this.takes.size);
+    this.startedAt = null;
+  }
+
   toHub() {
+    this.endRound();
     this.endPause();
     this.phase = 'hub';
     this.turnIndex = -1;
@@ -523,6 +539,10 @@ export class DubSession {
     const file = path.join(this.dir, 'takes', `take_${idx}_${String(pid).replace(/[^a-z0-9-]/gi, '')}.wav`);
     fs.writeFileSync(file, buf);
     this.skipped.delete(key(clipId, pid));
+    countStat('takes');
+    countStat('lines');
+    countStat('take_mb', buf.length / MB);
+    if (info.duration) observeStat('take_s', info.duration);
     this.takes.set(key(clipId, pid), { clipId, playerId: pid, name: this.nameOf(pid), file, at: Date.now(), score: score ?? null, duration: info.duration });
     this.activity.delete(pid);
     this.onEvent({ type: 'dub.take', clipId, playerId: pid, url: `/api/rooms/${this.room.code}/dub/takes/${encodeURIComponent(clipId)}/${encodeURIComponent(pid)}` });
@@ -674,6 +694,7 @@ export class DubSession {
       job.pct = 1;
     } catch (e) {
       job.status = 'error';
+      countStat('export_fail');
       job.error = e.message.startsWith('ffmpeg') ? 'Der Export ist fehlgeschlagen.' : e.message;
       console.warn('Export fehlgeschlagen:', e.message);
     }
@@ -702,6 +723,7 @@ export class DubSession {
   }
 
   destroy() {
+    this.endRound();
     clearTimeout(this.pauseTimer);
   }
 }
@@ -1086,6 +1108,7 @@ export function installDub(app, ctx) {
     if (!a) return;
     try {
       const z = a.dub.takesZip();
+      countStat('zips');
       attachment(res, z.name);
       res.type('application/zip').sendFile(z.file);
     } catch (e) {
@@ -1114,7 +1137,10 @@ export function installDub(app, ctx) {
       case 'dub.start': {
         const fresh = d.takes.size === 0;   // „Weitermachen“ zählt nicht als neue Runde
         const r = d.start(!!msg.force);
-        if (r.ok && fresh) countStat('dubs');
+        if (r.ok && fresh) {
+          countStat('dubs');
+          d.startedAt = Date.now();
+        }
         return r.ok ? true : 'start:' + r.reason;
       }
       case 'dub.skip':

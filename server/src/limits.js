@@ -6,6 +6,7 @@
 //   MAX_STORAGE_GB     Clips, Packs und Aufnahmen aller Räume zusammen (Standard 8)
 import fs from 'node:fs';
 import path from 'node:path';
+import { count } from './stats.js';
 
 export const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 150;
 export const MAX_PLAYERS_PER_ROOM = Number(process.env.MAX_PLAYERS_PER_ROOM) || 16;
@@ -74,6 +75,7 @@ export function storageAdd(bytes) {
 /** Antwortet mit 507 und false, wenn für want Bytes kein Platz mehr ist. */
 export function checkStorage(res, dataDir, want = 0) {
   if (storageLeft(dataDir) > want) return true;
+  count('full_storage');
   res.status(507).json({ error: 'storage_full', message: 'Der Server ist gerade voll. Versuch es später nochmal.' });
   return false;
 }

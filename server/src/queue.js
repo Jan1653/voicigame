@@ -5,6 +5,7 @@
  * Frei werdende Plätze gehen der Reihe nach an die Wartenden. Wer nicht mehr nachfragt, fällt heraus. */
 import crypto from 'node:crypto';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { count, peak, observe } from './stats.js';
 
 export const MAX_ACTIVE_ROOMS = Number(process.env.MAX_ACTIVE_ROOMS) || 60;
 const LAG_MS = Number(process.env.OVERLOAD_LAG_MS) || 250;
@@ -14,13 +15,16 @@ const lag = monitorEventLoopDelay({ resolution: 20 });
 lag.enable();
 let overloaded = false;
 setInterval(() => {
-  overloaded = lag.percentile(99) / 1e6 > LAG_MS;
+  const p99 = lag.percentile(99) / 1e6;
+  overloaded = p99 > LAG_MS;
+  peak('lag_ms', Math.round(p99));
+  if (overloaded) count('busy_s', 10);   // für die Statistik: so lange war der Server überlastet
   lag.reset();
 }, 10_000).unref();
 
 export const isOverloaded = () => overloaded;
 
-const waiting = []; // { ticket, seen } in Reihenfolge
+const waiting = []; // { ticket, since, seen } in Reihenfolge
 
 function prune() {
   const now = Date.now();
@@ -34,7 +38,10 @@ export function admit(ticket, free) {
   const i = ticket ? waiting.findIndex((w) => w.ticket === ticket) : -1;
   const position = i >= 0 ? i + 1 : waiting.length + 1;
   if (position <= free) {
-    if (i >= 0) waiting.splice(i, 1);
+    if (i >= 0) {
+      observe('queue_s', (Date.now() - waiting[i].since) / 1000);
+      waiting.splice(i, 1);
+    }
     return { ok: true };
   }
   if (i >= 0) {
@@ -42,7 +49,9 @@ export function admit(ticket, free) {
     return { ok: false, ticket, position };
   }
   const t = crypto.randomBytes(8).toString('hex');
-  waiting.push({ ticket: t, seen: Date.now() });
+  waiting.push({ ticket: t, since: Date.now(), seen: Date.now() });
+  count('queued');
+  peak('queue', waiting.length);
   return { ok: false, ticket: t, position: waiting.length };
 }
 

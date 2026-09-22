@@ -9,26 +9,32 @@ import { WebSocketServer } from 'ws';
 import QRCode from 'qrcode';
 import { Room } from './room.js';
 import { relayFrame } from './stream.js';
-import { allowRoom, MAX_ROOMS, MAX_PLAYERS_PER_ROOM, checkStorage, storageAdd } from './limits.js';
+import { allowRoom, MAX_ROOMS, MAX_PLAYERS_PER_ROOM, checkStorage, storageAdd, storageUsed } from './limits.js';
 import { installDub } from './dub.js';
-import { count as countStat, flush as flushStats, startAutoFlush } from './stats.js';
+import { wavInfo } from './dubfiles.js';
+import { count as countStat, peak as peakStat, observe as observeStat, tag as tagStat, flush as flushStats, startAutoFlush } from './stats.js';
 import { admit, isOverloaded, MAX_ACTIVE_ROOMS } from './queue.js';
 import { installMod } from './mod.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Unerwartete Fehler protokollieren statt den Server (und damit alle Räume) zu beenden
-process.on('unhandledRejection', (e) => console.error('Unbehandelter Fehler:', e));
-process.on('uncaughtException', (e) => console.error('Unerwarteter Fehler:', e));
-// Beim Beenden (Update, Neustart) die Statistik noch schreiben
+process.on('unhandledRejection', (e) => { countStat('errors'); console.error('Unbehandelter Fehler:', e); });
+process.on('uncaughtException', (e) => { countStat('errors'); console.error('Unerwarteter Fehler:', e); });
+// Beim Beenden (Update, Neustart) die Statistik noch schreiben, mit den Räumen, die gerade noch laufen
 startAutoFlush();
-for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { flushStats(); process.exit(0); });
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
+  for (const room of rooms.values()) { endShow(room); room.recordLife(); }
+  flushStats();
+  process.exit(0);
+});
 const PORT = Number(process.env.PORT) || 8080;
 // Nur auf dieser Adresse lauschen, z. B. 127.0.0.1 hinter Caddy. Leer = alle Adressen.
 const HOST = process.env.HOST || '';
 const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 // Je Port ein eigener Ordner: zwei Server auf einem Rechner räumen sich beim Start nicht gegenseitig auf
 const DATA_DIR = process.env.DATA_DIR || path.join(os.tmpdir(), `voicigame-${PORT}`);
+const MB = 1024 ** 2;
 const ROOM_IDLE_MS = 45 * 60 * 1000;     // niemand mehr verbunden
 const ROOM_CLOSED_MS = 5 * 60 * 1000;    // Host hat den Raum geschlossen (Handys sehen noch kurz den Hinweis)
 
@@ -139,13 +145,16 @@ app.post('/api/rooms', (req, res) => {
     return res.status(503).json({ error: 'busy', message: 'Der Server ist gerade voll.', queue: { ticket: q.ticket, position: q.position } });
   }
   if (!allowRoom(req.ip)) {
+    countStat('rate_limited');
     return res.status(429).json({ error: 'rate_limited', message: 'Zu viele neue Räume. Warte ein paar Minuten.' });
   }
   const room = new Room(newCode(), DATA_DIR);
   rooms.set(room.code, room);
-  if (req.query.game === 'dub') dub.open(room, 'browser');
+  const fromWeb = req.query.game === 'dub';   // nur die Website legt Dub-Räume an, sonst kommt der Raum aus dem Spiel
+  if (fromWeb) dub.open(room, 'browser');
   console.log(`Raum ${room.code} erstellt`);
   countStat('rooms');
+  countStat(fromWeb ? 'rooms_web' : 'rooms_game');
   res.json({ code: room.code, hostKey: room.hostKey, joinUrl: joinUrl(room) });
 });
 
@@ -192,6 +201,8 @@ app.put('/api/rooms/:code/clips/:clipId', express.raw({ type: () => true, limit:
   clip.mime = outMime;
   clip.size = fs.statSync(file).size;
   clip.available = true;
+  countStat('clips');
+  countStat('clip_mb', req.body.length / MB);
   // Alte Kopie im Handy-Cache ist evtl. veraltet
   for (const p of room.players.values()) p.cached.delete(clip.id);
   broadcastState(room);
@@ -221,6 +232,7 @@ app.post('/api/rooms/:code/turns/:turnId/recording', express.raw({ type: () => t
   }
   if (!req.body?.length) return res.status(400).json({ error: 'empty' });
   fs.writeFileSync(path.join(room.dir, 'rec', `${turn.turnId}.wav`), req.body);
+  countTake(req.body);
   turn.status = 'recorded';
   turn.phoneScore = parsePhoneScore(req.get('x-phone-score'));
   toHosts(room, {
@@ -255,9 +267,16 @@ app.post('/api/rooms/:code/rounds/:roundId/recording', express.raw({ type: () =>
   const file = path.join(room.dir, 'rec', `show_${roundId}_${player.id}.wav`);
   const phoneScore = parsePhoneScore(req.get('x-phone-score'));
   if (!checkStorage(res, DATA_DIR, req.body.length)) return;
+  const round = room.show.round;
   if (!room.acceptShowRecording(roundId, player.id, file, phoneScore)) return res.status(409).json({ error: 'not_your_round' });
   storageAdd(req.body.length);
   fs.writeFileSync(file, req.body);
+  countTake(req.body);
+  // Wie lange das Spiel über die Aufnahmezeit hinaus auf die Aufnahme gewartet hat (0 = war rechtzeitig da)
+  if (round?.at) {
+    const extra = (Date.now() - round.at) / 1000 - (round.seconds + round.countdown + round.leadIn);
+    observeStat('upload_s', Math.max(0, extra));
+  }
   toHosts(room, {
     type: 'show.recording',
     roundId,
@@ -296,12 +315,66 @@ function parsePhoneScore(raw) {
   }
 }
 
+/* ---------- Statistik ----------
+ * Nur Summen über alle: keine Namen, keine Adressen, keine Raumcodes. */
+
+/** Aufnahme eines Handys: Anzahl, Größe und Länge. */
+function countTake(buf) {
+  countStat('takes');
+  countStat('take_mb', buf.length / MB);
+  const info = wavInfo(buf);
+  if (info?.duration) observeStat('take_s', info.duration);
+}
+
+/** Eine Gameshow ist vorbei: Dauer und Anzahl der Runden festhalten. */
+function endShow(room) {
+  if (!room.showStartedAt) return;
+  observeStat('show_min', (Date.now() - room.showStartedAt) / 60_000);
+  observeStat('show_rounds', room.showRounds || 0);
+  room.showStartedAt = null;
+  room.showRounds = 0;
+}
+
+const VERSION_RE = /^\d+(\.\d+){0,3}$/;
+
+/** Aus dem Spiel: Mod-Version, Spielversion, Betriebssystem (schickt bridge.gd/join_client.gd). */
+function tagMod(msg) {
+  if (VERSION_RE.test(String(msg.version || ''))) tagStat('mod', msg.version);
+  if (/^[\w.+-]{1,16}$/.test(String(msg.game || ''))) tagStat('gameversion', msg.game);
+  if (/^[\w .+-]{1,20}$/.test(String(msg.os || ''))) tagStat('os', msg.os);
+}
+
+/** Von der Website: Sprache, Zeitzone und Land aus den Einstellungen des Geräts, Browser aus dem User-Agent.
+ *  Alles grob und nur als Tagessumme. Die Adresse des Besuchers wird nirgends gespeichert. */
+function tagWeb(req, msg) {
+  const ua = String(req?.headers['user-agent'] || '');
+  tagStat('browser', /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung'
+    : /Firefox\/|FxiOS/.test(ua) ? 'Firefox' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'andere');
+  tagStat('system', /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows'
+    : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'andere');
+  if (/^[a-z]{2}$/i.test(String(msg.lang || ''))) tagStat('lang', String(msg.lang).toLowerCase());
+  if (/^[a-z]{2}$/i.test(String(msg.land || ''))) tagStat('land', String(msg.land).toUpperCase());
+  if (/^[A-Za-z_+-]+(\/[A-Za-z_+-]+){0,2}$/.test(String(msg.tz || ''))) tagStat('zone', msg.tz);
+  if (['selbst', 'geraet'].includes(msg.pick)) tagStat('langpick', msg.pick);
+  if (['aero', 'simple', 'dark'].includes(msg.style)) tagStat('style', msg.style);
+}
+
+/** Jemand ist beigetreten: über die Website oder aus dem eigenen Spiel mit Mod. */
+function countJoin(req, msg) {
+  countStat('players');
+  const fromGame = msg.client === 'game';
+  tagStat('client', fromGame ? 'game' : 'web');
+  countStat(fromGame ? 'players_game' : 'players_web');
+  if (fromGame) tagMod(msg);
+  else tagWeb(req, msg);
+}
+
 /* ---------- WebSocket ---------- */
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 1 << 20 });
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   ws.isAlive = true;
   ws.on('pong', () => (ws.isAlive = true));
   let room = null;
@@ -331,6 +404,11 @@ wss.on('connection', (ws) => {
         if (msg.key !== room.hostKey) return send(ws, { type: 'error', code: 'forbidden', message: 'Falscher Host-Schlüssel.' });
         role = 'host';
         room.hosts.add(ws);
+        // Einmal je Raum: mit welcher Mod- und Spielversion gehostet wird
+        if (!room.hostTagged) {
+          room.hostTagged = true;
+          tagMod(msg);
+        }
         room.closed = false;
         send(ws, { type: 'welcome', role, code: room.code, joinUrl: joinUrl(room) });
         broadcastState(room); // Handys sehen: PC ist (wieder) da
@@ -344,12 +422,13 @@ wss.on('connection', (ws) => {
         const phones = [...room.players.values()].filter((x) => x.kind === 'phone' && !x.left).length;
         if (phones >= MAX_PLAYERS_PER_ROOM) {
           // Nicht anmelden: sonst gilt die Verbindung als Handy ohne Spieler
+          countStat('full_room');
           send(ws, { type: 'error', code: 'room_full', message: 'Der Raum ist voll.' });
           ws.close(4002, 'room_full');
           return;
         }
         p = room.addPhone(msg.name);
-        countStat('players');
+        countJoin(req, msg);
       } else if (msg.name) p.name = String(msg.name).slice(0, 24) || p.name;
       role = 'phone';
       player = p;
@@ -485,17 +564,26 @@ function handleHost(room, ws, msg) {
       if (room.dub && ['playing', 'paused'].includes(room.dub.phase)) room.dub.toHub();
       room.closed = true;
       room.closedAt = Date.now();
+      endShow(room);
       toHosts(room, { type: 'game.ended' });
       toPhones(room, { type: 'game.ended' });
       break;
     case 'game.reset':
+      endShow(room);
       room.backToLobby();
       break;
     // ---------- Gameshow ----------
     case 'show.round': {
       if (!room.clip(String(msg.clipId))?.available) return err('clip_not_ready', 'Der Clip ist noch nicht hochgeladen.');
       const r = room.startShowRound(msg);
-      if (Number(msg.index) === 0) countStat('shows');   // erste Runde = eine Gameshow
+      if (Number(msg.index) === 0) {                     // erste Runde = eine neue Gameshow
+        endShow(room);
+        countStat('shows');
+        room.showStartedAt = Date.now();
+        room.showRounds = 0;
+      }
+      countStat('rounds');
+      room.showRounds = (room.showRounds || 0) + 1;
       room.show.status = '';
       for (const id of r.recorders) {
         const p = room.players.get(id);
@@ -526,6 +614,7 @@ function handleHost(room, ws, msg) {
       }));
       room.show.round = null;
       room.phase = 'ended';
+      endShow(room);
       toPhones(room, { type: 'show.end', ranking: room.show.ranking });
       break;
     }
@@ -540,6 +629,7 @@ function handlePhone(room, player, msg) {
   switch (msg.type) {
     case 'watch':
       player.watch = !!msg.on;
+      if (msg.on) countStat('watch');
       break;
     case 'claim.toggle':
       room.toggleClaim(String(msg.character), player.id);
@@ -591,6 +681,7 @@ setInterval(() => {
     const active = isActive(room);
     const closed = room.closed && !room.hosts.size && now - room.closedAt > ROOM_CLOSED_MS;
     if (closed || (!active && now - room.lastActive > ROOM_IDLE_MS)) {
+      endShow(room);
       room.dub?.destroy();
       room.destroy();
       rooms.delete(code);
@@ -598,6 +689,27 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+// Höchststände für die Statistik: wie viel gleichzeitig los war
+setInterval(() => {
+  let active = 0;
+  let phones = 0;
+  let watchers = 0;
+  for (const room of rooms.values()) {
+    if (isActive(room)) active++;
+    for (const p of room.players.values()) {
+      if (p.kind !== 'phone' || !p.connected) continue;
+      phones++;
+      if (p.watch) watchers++;
+    }
+  }
+  peakStat('rooms', rooms.size);
+  peakStat('active', active);
+  peakStat('players', phones);
+  peakStat('watchers', watchers);
+  peakStat('rss_mb', process.memoryUsage.rss() / MB);
+  peakStat('storage_mb', storageUsed(DATA_DIR) / MB);
+}, 60_000).unref();
 
 server.listen(PORT, ...(HOST ? [HOST] : []), () => {
   console.log(`Server läuft auf ${HOST || 'allen Adressen'}, Port ${PORT}`);

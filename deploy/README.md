@@ -55,11 +55,21 @@ Every 2 minutes it checks GitHub. A new commit on `main` is built and started. T
 
 ## Statistics
 
-The server counts per day how many rooms, gameshows, dub rounds, players and video exports there were. Only numbers, no names or addresses. They are kept in the Docker volume `stats` and survive updates.
+The server keeps a few numbers per day, so you can see how it is doing and how people play. Only sums over everybody, never anything about a single person: no names, no addresses, no room codes, no pack or clip titles.
+
+- **Games:** rooms (from the game or from the browser), gameshows, dub rounds, rounds and dub lines, recordings, uploaded clips and packs, exported videos, live picture.
+- **How long and how much:** a gameshow, a dub round, an open room, a visit, players per room, rounds per gameshow, lines and size per pack, length of a recording and how long the game waits for one.
+- **What people use:** website or their own game with the mod, mod version, game version, operating system, browser, device, style of the website.
+- **Where they come from:** language, timezone and country as the browser reports its own settings. Nothing is looked up from the address.
+- **Server:** how long it was overloaded, how many rooms had to wait and for how long, rejected requests, the peaks of the day (rooms, players, watchers, disk, memory, lag) and errors in the log.
 
 ```bash
-docker exec voicigame node src/stats.js 30      # last 30 days as a bar chart, any number of days works
+docker exec -t voicigame node src/stats.js           # last 30 days (-t for colours)
+docker exec -t voicigame node src/stats.js 90        # any number of days, above 70 it counts by week
+docker exec voicigame node src/stats.js 7 --json     # the raw numbers
 ```
+
+They are kept in the Docker volume `stats` and survive updates.
 
 ## Settings
 

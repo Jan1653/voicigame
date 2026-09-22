@@ -104,10 +104,14 @@ ffmpeg is optional. Without it, dub videos only play in some browsers and the vi
 - The judging is the game's own. For very short clips it sometimes gives low scores even for good takes. That happens without the mod too.
 - Recordings on phones can start a little early or late, depending on the phone's audio delay. In dub mode you can drag your take into place on the waveform.
 
+## What the server counts
+
+So I can see whether the server is fast enough and what to work on, it keeps a small usage statistic: how many rooms and games there were, how long a round takes, which mod version, language, timezone and browser people use, and how loaded the server was. Only sums per day, never anything about a single person: no names, no addresses, no room codes and nothing out of your recordings. Language, timezone and country are what your browser says about its own settings, nothing is looked up from your address. On your own server: `node src/stats.js` (see [deploy/README.md](deploy/README.md)).
+
 ## For developers
 
 - `mod/voicigame/`: the mod. Raise `VERSION` in `main.gd` with every change (fixes 0.2.1, new features 0.3.0), Voicitool shows it. `main.gd` hooks into the menus, `bridge.gd` talks to the server, `show_hook.gd` and `dub_hook.gd` feed web takes into the game, `join_screen.gd` is the join client, `stream.gd` sends the live picture.
-- `server/`: Node.js (express, ws, qrcode). `src/room.js` holds rooms and players, `src/dub.js` the dub mode, `src/stream.js` passes the live picture on. The phone page is `public/index.html` with `app.js` and `dub.js`.
+- `server/`: Node.js (express, ws, qrcode). `src/room.js` holds rooms and players, `src/dub.js` the dub mode, `src/stream.js` passes the live picture on, `src/stats.js` collects the usage numbers and `src/statsview.js` prints them. The phone page is `public/index.html` with `app.js` and `dub.js`.
 - Translations: German is the source in the code. Website texts are in `server/public/lang/`, mod texts in `mod/voicigame/lang.json`. `node tools/build_mod_lang.js --check` lists mod texts without a translation.
 - Tests drive the real game: `tools/run_test.ps1 <plan>` with the plans `show`, `join`, `dub` and simulated phones (`tools/fake-phone.js`, `tools/fake-dub-phone.js`) or a simulated host (`tools/fake-host.js`). The game folder comes from `VG_GAME_DIR` or a line in `tools/game_dir.txt` (not in the repository), otherwise the default Steam folder.
 

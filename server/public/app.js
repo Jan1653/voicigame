@@ -136,6 +136,21 @@ document.addEventListener('visibilitychange', async () => {
 
 /* ================= Verbindung ================= */
 
+/* Grobe Angaben zum Gerät für die Nutzungsstatistik des Servers (nur Tagessummen, nichts Persönliches):
+   gewählte Sprache, Zeitzone und Land aus den Einstellungen des Browsers, eingestellter Stil. */
+function clientInfo() {
+  const info = { client: 'web' };
+  try {
+    info.lang = window.VG_I18N?.lang;
+    info.pick = window.VG_I18N?.chosen ? 'selbst' : 'geraet';
+    info.tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    info.land = String(navigator.language || '').split('-')[1];
+    const el = document.documentElement;
+    info.style = el.dataset.theme === 'dark' ? 'dark' : el.dataset.style;
+  } catch (e) { /* egal, dann eben ohne */ }
+  return info;
+}
+
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   const ws = new WebSocket(`${proto}://${location.host}/ws`);
@@ -144,7 +159,7 @@ function connect() {
   S.cast.sent = null;
   ws.onopen = () => {
     S.retry = 0;
-    ws.send(JSON.stringify({ type: 'hello', role: 'phone', code: S.code, name: S.name, token: S.token }));
+    ws.send(JSON.stringify({ type: 'hello', role: 'phone', code: S.code, name: S.name, token: S.token, ...clientInfo() }));
   };
   ws.onmessage = (ev) => {
     if (ev.data instanceof ArrayBuffer) return onLiveFrame(ev.data);
