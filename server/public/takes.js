@@ -125,7 +125,7 @@
       box.append(el('p', 'muted', tr('Hier sammeln sich deine Aufnahmen. Noch ist nichts da.')));
     } else {
       const bytes = items.reduce((n, x) => n + (x.blob?.size || 0), 0);
-      box.append(el('p', 'muted', tr(`${items.length} Aufnahmen, zusammen ${size(bytes)}. Sie liegen nur auf diesem Gerät.`)));
+      box.append(el('p', 'muted', tr(`Zusammen ${size(bytes)}. Sie liegen nur auf diesem Gerät.`)));
       const ul = el('ul', 'take-list');
       for (const it of items) ul.append(row(it, box));
       box.append(ul);
