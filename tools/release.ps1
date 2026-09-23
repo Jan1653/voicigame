@@ -27,8 +27,12 @@ try {
   }
   $Notes = "$Notes`n`nUnzip and run install.bat (Windows) or install.sh (Linux). Voicitool installs and updates the mod on its own."
 
-  gh release view $version --json tagName > $null 2> $null
+  # Windows PowerShell macht aus stderr eines Programms sonst einen abbrechenden Fehler
+  $keep = $ErrorActionPreference
+  $ErrorActionPreference = 'SilentlyContinue'
+  gh release view $version --json tagName 2>&1 | Out-Null
   $exists = ($LASTEXITCODE -eq 0)
+  $ErrorActionPreference = $keep
   if ($exists -and -not $Force) { throw "Release $version gibt es schon (mit -Force ersetzen)." }
   if ($exists) {
     gh release edit $version --title "Voicigame $version" --notes $Notes
