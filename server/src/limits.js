@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { count } from './stats.js';
+import { freeUp } from './packcache.js';
 
 export const MAX_ROOMS = Number(process.env.MAX_ROOMS) || 150;
 export const MAX_PLAYERS_PER_ROOM = Number(process.env.MAX_PLAYERS_PER_ROOM) || 16;
@@ -92,9 +93,15 @@ export function storageDrop(dir) {
   usedCache.bytes = Math.max(0, usedCache.bytes - dirSize(dir));
 }
 
-/** Antwortet mit 507 und false, wenn für want Bytes kein Platz mehr ist. */
+/** Antwortet mit 507 und false, wenn für want Bytes kein Platz mehr ist.
+ *  Vorher fliegen gemerkte Packs raus: die sind nur eine Abkürzung, ein laufendes Spiel ist wichtiger. */
 export function checkStorage(res, dataDir, want = 0) {
   if (storageLeft(dataDir) > want) return true;
+  const freed = freeUp(dataDir, want - storageLeft(dataDir) + MAX_STORAGE * 0.05);
+  if (freed) {
+    usedCache = { at: 0, bytes: usedCache.bytes };   // beim nächsten Blick neu nachzählen
+    if (storageLeft(dataDir) > want) return true;
+  }
   count('full_storage');
   res.status(507).json({ error: 'storage_full', message: 'Der Server ist gerade voll. Versuch es später nochmal.' });
   return false;

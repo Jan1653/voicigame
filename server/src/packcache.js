@@ -154,14 +154,38 @@ function size(dir) {
   return n;
 }
 
-/** Über der Grenze: das am längsten ungenutzte Pack fliegt raus. */
-export function prune(dataDir) {
+/** Alle gemerkten Packs mit Stand und Größe, ältestes zuerst. */
+function listPacks(dataDir) {
   const root = path.join(dataDir, '_packs');
   let list;
-  try { list = fs.readdirSync(root); } catch { return; }
-  const packs = list.map((fp) => ({ fp, dir: path.join(root, fp), at: used(path.join(root, fp)), bytes: size(path.join(root, fp)) }));
+  try { list = fs.readdirSync(root); } catch { return []; }
+  return list
+    .map((fp) => ({ fp, dir: path.join(root, fp), at: used(path.join(root, fp)), bytes: size(path.join(root, fp)) }))
+    .sort((a, b) => a.at - b.at);
+}
+
+/**
+ * Platz schaffen, wenn der Datenordner voll läuft: der Pack-Speicher ist nur eine Abkürzung,
+ * laufende Räume haben Vorrang. Wirft die am längsten ungenutzten Packs raus. -> freigegebene Bytes
+ */
+export function freeUp(dataDir, need) {
+  let freed = 0;
+  for (const p of listPacks(dataDir)) {
+    if (freed >= need) break;
+    try {
+      fs.rmSync(p.dir, { recursive: true, force: true });
+      freed += p.bytes;
+      countStat('pack_cache_drops');
+    } catch {}
+  }
+  if (freed) console.log(`Pack-Speicher: ${(freed / 1024 ** 2).toFixed(0)} MB freigegeben, der Platz wurde gebraucht`);
+  return freed;
+}
+
+/** Über der Grenze: das am längsten ungenutzte Pack fliegt raus. */
+export function prune(dataDir) {
+  const packs = listPacks(dataDir);
   let total = packs.reduce((n, p) => n + p.bytes, 0);
-  packs.sort((a, b) => a.at - b.at);
   for (const p of packs) {
     if (total <= MAX_BYTES) break;
     fs.rmSync(p.dir, { recursive: true, force: true });
