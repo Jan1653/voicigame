@@ -91,6 +91,18 @@ func _run(plan: String) -> void:
 	_note("Mod geladen aus: %s" % (vgn.get_script().resource_path if vgn else "-"))
 	await _shot("solo_gruppe")
 	if plan == "menu" or tile == null:
+		# Fehlermeldung an den Server: eine Warnung wie jede andere, der Mod liest sie aus dem
+		# Spielprotokoll und schickt sie weg (mod/voicigame/errlog.gd)
+		push_warning("Voicigame: Testmeldung aus dem Testlauf")
+		var vgn2 := get_node_or_null("/root/Voicigame")
+		var sent := 0
+		for i in 30:
+			await get_tree().create_timer(1.0).timeout
+			if vgn2 and vgn2.errlog:
+				sent = int(vgn2.errlog._sent)
+			if sent > 0:
+				break
+		_note("Fehlermeldung an den Server: %d geschickt" % sent)
 		_note("ENDE")
 		return
 	var vg := get_node_or_null("/root/Voicigame")

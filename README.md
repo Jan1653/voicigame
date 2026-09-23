@@ -115,6 +115,8 @@ A pack the server has seen before is never uploaded or converted again: it is re
 
 So I can see whether the server is fast enough and what to work on, it keeps a small usage statistic: how many rooms and games there were, how long a round takes, which mod version, language, timezone and browser people use, and how loaded the server was. Only sums per day, never anything about a single person: no names, no addresses, no room codes and nothing out of your recordings. Language, timezone and country are what your browser says about its own settings, nothing is looked up from your address. On your own server: `node src/stats.js` (see [deploy/README.md](deploy/README.md)).
 
+Errors and warnings are reported too, from the website and from the mod in the game, so broken things show up instead of staying on somebody's PC. Only the text of the message and the file and line it came from, at most ten per game start and twenty per hour and address. Paths are cut down to the mod's own folder, so your user name never leaves your PC. On your own server: `node src/errlog.js`.
+
 ## For developers
 
 - `mod/voicigame/`: the mod. Raise `VERSION` in `main.gd` with every change (fixes 0.2.1, new features 0.3.0), Voicitool shows it. `main.gd` hooks into the menus, `bridge.gd` talks to the server, `show_hook.gd` and `dub_hook.gd` feed web takes into the game, `join_screen.gd` is the join client, `stream.gd` sends the live picture.

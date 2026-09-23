@@ -1,7 +1,7 @@
 /* Fehler und Warnungen sammeln, damit man nachsehen kann, was schiefging.
  *   - alles, was der Server auf console.error oder console.warn schreibt
  *   - unerwartete Fehler (uncaughtException, unhandledRejection)
- *   - Fehler aus den Browsern der Spieler (POST /api/log, siehe server.js)
+ *   - Fehler aus den Browsern der Spieler und aus dem Mod im Spiel (POST /api/log, siehe server.js)
  *
  * Geschrieben wird in STATS_DIR/log.txt, also neben die Statistik und damit über Updates hinweg.
  * Ab 1 MB wandert die Datei nach log.1.txt, es bleiben also höchstens zwei.
@@ -23,7 +23,7 @@ const MAX_LINE = 1000;
 
 let size = -1;
 
-/** Eine Zeile anhängen. kind: error | warn | web. */
+/** Eine Zeile anhängen. kind: error | warn | web | mod. */
 export function write(kind, text) {
   const line = `${new Date().toISOString()} ${kind} ${String(text).replace(/\s+/g, ' ').trim().slice(0, MAX_LINE)}\n`;
   try {
@@ -41,10 +41,16 @@ export function write(kind, text) {
   }
 }
 
-/** Meldung aus einem Browser. Kommt über /api/log, dort auch die Bremse gegen zu viele Meldungen. */
+/** Meldung von einem Spieler: aus dem Browser oder aus dem Mod im Spiel.
+ *  Kommt über /api/log, dort auch die Bremse gegen zu viele Meldungen. */
+export function fromClient(text, where, kind = 'web') {
+  count(kind === 'mod' ? 'errors_mod' : 'errors_web');
+  write(kind === 'mod' ? 'mod' : 'web', `${where ? where + ' | ' : ''}${text}`);
+}
+
+/** Wie fromClient, für die Browser. */
 export function fromWeb(text, where) {
-  count('errors_web');
-  write('web', `${where ? where + ' | ' : ''}${text}`);
+  fromClient(text, where, 'web');
 }
 
 /** console.error und console.warn mitschreiben und zählen. Einmal beim Start aufrufen. */

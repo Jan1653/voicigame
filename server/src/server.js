@@ -15,7 +15,7 @@ import { wavInfo } from './dubfiles.js';
 import { count as countStat, peak as peakStat, observe as observeStat, tag as tagStat, flush as flushStats, startAutoFlush } from './stats.js';
 import { admit, isOverloaded, MAX_ACTIVE_ROOMS } from './queue.js';
 import { installMod } from './mod.js';
-import { install as installErrLog, fromWeb as logFromWeb } from './errlog.js';
+import { install as installErrLog, fromClient as logFromClient } from './errlog.js';
 import { installNotice, noticesFor, tooOld, WANT_MOD } from './notice.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -151,8 +151,8 @@ app.get('/api/restart-soon', (req, res) => {
   res.json({ ok: true, told: n });
 });
 
-// Fehler aus den Browsern der Spieler: nur der Text, keine Namen und keine Adressen. Höchstens 20 je Stunde
-// und Anschluss, damit eine kaputte Seite den Server nicht zuschreibt.
+// Fehler aus den Browsern der Spieler und aus dem Mod im Spiel: nur der Text, keine Namen und keine
+// Adressen. Höchstens 20 je Stunde und Anschluss, damit eine kaputte Seite den Server nicht zuschreibt.
 const webLog = new Map();
 app.post('/api/log', express.json({ limit: '4kb' }), (req, res) => {
   const now = Date.now();
@@ -161,7 +161,10 @@ app.post('/api/log', express.json({ limit: '4kb' }), (req, res) => {
   if (now - e.at > 3600_000) { e.n = 0; e.at = now; }
   e.n++;
   webLog.set(req.ip, e);
-  if (e.n <= 20) logFromWeb(String(req.body?.msg || '').slice(0, 300), String(req.body?.where || '').slice(0, 120));
+  if (e.n <= 20) {
+    logFromClient(String(req.body?.msg || '').slice(0, 300), String(req.body?.where || '').slice(0, 120),
+      req.body?.client === 'game' ? 'mod' : 'web');
+  }
   res.json({ ok: true });
 });
 

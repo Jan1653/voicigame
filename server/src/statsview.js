@@ -342,7 +342,9 @@ export function report(all, days, { json = false, color = true } = {}) {
   kv(out, 'Platz und RAM', `${size(top('storage_mb'))} Dateien, ${size(top('rss_mb'))} Arbeitsspeicher ${c.dim('(Höchststand)')}`);
   const warns = sum('warnings');
   const webErrs = sum('errors_web');
-  kv(out, 'Fehler im Log', (errs ? c.bad(int(errs)) : c.ok('0')) + c.dim(`   ${int(warns)} Warnungen, ${int(webErrs)} aus Browsern`)
+  const modErrs = sum('errors_mod');
+  kv(out, 'Fehler im Log', (errs ? c.bad(int(errs)) : c.ok('0'))
+    + c.dim(`   ${int(warns)} Warnungen, ${int(webErrs)} aus Browsern, ${int(modErrs)} aus dem Spiel`)
     + c.dim('   (node src/errlog.js)'));
   out.push('');
   return out.map((l) => l.replace(/\s+$/, '')).join('\n');
