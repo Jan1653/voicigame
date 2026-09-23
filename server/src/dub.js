@@ -1905,6 +1905,11 @@ export function installDub(app, ctx) {
         }
         return r.ok ? true : 'start:' + r.reason;
       }
+      case 'dub.export.local':
+        // Der PC hat das Video für sich selbst gemacht: nur für die Statistik, der Server tut nichts
+        countStat('exports');
+        countStat('exports_host');
+        return 'nobroadcast';
       case 'dub.export.server':
         // Der PC kann das Video doch nicht selbst machen: nicht weiter warten
         if (d.exportJob.byHost) d.serverExport();
