@@ -7,7 +7,7 @@ voicigame is two parts: a small mod that runs inside the game, and a web server 
 ## What you can do
 
 - **Gameshow:** everyone imitates the same clips. Phone players hear the clip on their phone, tap **Go** and record. The game plays their take through its own microphone channel, so the jury rates it exactly like a player at the PC. If a take is still on its way, the game waits for it.
-- **Dub mode:** pick a dub pack, everyone claims characters and records their lines while the video plays in the browser, like in the game. At the end you watch the result together on every device and export it as a video. Started from the game, the pack stays on your PC as long as nobody needs it: players who join from their own game use their own copy, and browsers keep packs they have loaded before. Only when somebody needs the files, or you export a video, does the pack go up to the server. The round can start while it is still on its way.
+- **Dub mode:** pick a dub pack, everyone claims characters and records their lines while the video plays in the browser, like in the game. At the end you watch the result together on every device and export it as a video. Started from the game, the pack stays on your PC as long as nobody needs it: players who join from their own game use their own copy, and browsers keep packs they have loaded before. Only when somebody needs the files, or you export a video, does the pack go up to the server. The round can start while it is still on its way. If your PC has ffmpeg (Voicitool brings its own), it packs a browser version first: video as H.264, audio as AAC, pictures as WebP, all in one file. That is usually a quarter of the original size, it plays on every phone, and the server never has to convert anything.
 - **Pass a line on:** in a dub round you can give the line you are on to somebody else. They have to take it, and until they answer the round waits. People can also join a round that is already running, and the leader can remove somebody mid-round.
 - **Your recordings stay with you:** every take you record in the browser is also kept on your own device. Dub takes are kept as a small video (the bit of the pack's video the line belongs to, with your voice on it), so you can watch them, not just listen. A button at the bottom of the page lists them, plays them back, saves them as a file and deletes them again, one by one or all at once.
 - **Dub without the game:** click **Create your own room** on the website, upload a pack (ZIP or folder) and play the whole dub round online.
@@ -98,7 +98,9 @@ npm start
 
 This starts the server on port 8080. Phones only allow the microphone over https, so for real games the server needs to run behind https. [deploy/README.md](deploy/README.md) shows a setup that runs next to other websites on the same machine and updates itself from GitHub. Then point `url` in `voicigame.cfg` to your address.
 
-ffmpeg is optional. Without it, dub videos only play in some browsers and the video export is not available (players can still download their takes as a ZIP).
+ffmpeg is optional on the server. Hosts with ffmpeg send a ready made browser pack, so the server only stores and serves it. Without ffmpeg on either side, dub videos only play in some browsers and the video export is not available (players can still download their takes as a ZIP).
+
+A pack the server has seen before is never uploaded or converted again: it is recognised by its files and kept in `<data>/_packs` (`PACK_CACHE_GB`, 2 GB by default).
 
 ## Limits
 

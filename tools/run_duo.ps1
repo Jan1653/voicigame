@@ -46,6 +46,14 @@ try {
   [IO.File]::WriteAllText("$mud\voicigame.cfg", $server + "`r`n[join]`r`n`r`nname=`"PC-Freund`"`r`n")
   if (Test-Path "$mud\voicigame_test") { Trash "$mud\voicigame_test" }
   New-Item -ItemType Directory -Force "$mud\voicigame_test" | Out-Null
+  # Erster Start in einem frischen Datenordner: das Spiel zeigt sonst den Einstieg für neue Spieler
+  # und kommt nie ins Menü. Deshalb den Spielstand des Hosts übernehmen (ohne Packs, die liegen woanders).
+  $mSave = "$mud\game\saves\save.json"
+  $hSave = "$ud\game\saves\save.json"
+  if ((Test-Path $hSave) -and (-not (Test-Path $mSave) -or (Get-Content $mSave -Raw) -match '"first_time":\s*true')) {
+    New-Item -ItemType Directory -Force (Split-Path $mSave) | Out-Null
+    Copy-Item $hSave $mSave -Force
+  }
   if ($env:VG_MEMBER_FRESH -eq "1") {
     Get-ChildItem "$mud\game\packs_voice" -Directory -Filter "Voicigame Dub*" -ErrorAction SilentlyContinue | ForEach-Object { Trash $_.FullName }
   }

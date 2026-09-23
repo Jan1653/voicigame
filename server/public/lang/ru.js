@@ -342,4 +342,12 @@ window.VG_LANG.ru = { strings: {
   'Mitspieler ausblenden': 'Скрыть игроков',
   'Zeile geben': 'Отдать реплику',
   '{} hat {} eine Zeile angeboten.': '{} предложил(а) реплику {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Сервер скоро обновится и ненадолго перезапустится. После этого нужно будет войти заново.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Сервер скоро обновится и ненадолго перезапустится. После этого вам нужно будет войти заново.',
+  'Dieser Mod ist zu alt für den Server.': 'Этот мод слишком старый для сервера.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Для сервера есть более новая версия мода.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Открой Voicitool, и он обновится.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Перезапусти игру, и она загрузит обновление.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Пак готовится для браузера … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Пак для браузера загружается … {} %',
 } };

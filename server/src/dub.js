@@ -7,6 +7,7 @@ import { checkStorage, storageAdd, storageAddFile, storageLeft } from './limits.
 import { ffmpeg, findFfmpeg, probe } from './ffjobs.js';
 import { count as countStat, observe as observeStat } from './stats.js';
 import * as packCache from './packcache.js';
+import { readManifest, assetsOf } from './vgpack.js';
 
 /* =====================================================================
  * Dub-Modus (Synchronisieren): ein Video, jeder spricht die Zeilen seiner Figuren.
@@ -95,7 +96,7 @@ export class DubSession {
     this.version = 0;                  // steigt mit jedem neuen Pack
     this.orderVersion = 0;             // steigt, wenn nur die Reihenfolge wechselt
     this.packStatus = { status: 'none', error: null, note: null };   // none | uploading | processing | ready | error
-    this.video = { status: 'none', pct: 0, file: null, mime: null, duration: 0, height: 0, codec: null, h264: false };
+    this.video = { status: 'none', pct: 0, file: null, part: null, mime: null, duration: 0, height: 0, codec: null, h264: false };
     this.orderMode = 'chrono';
     this.order = [];
     this.useAsIs = new Set();
@@ -116,6 +117,7 @@ export class DubSession {
     this.exportPending = false;        // Export gewünscht, das Pack ist aber noch nicht ganz auf dem Server
     this.exportDropTimer = null;
     this.cached = false;               // Pack kam aus dem Speicher des Servers, es wurde nichts hochgeladen
+    this.web = this.emptyWeb();        // Web-Pack (.vgpack) vom PC, siehe vgpack.js
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
     this.takes = new Map();            // key -> {clipId, playerId, name, file, at, score}
@@ -208,10 +210,19 @@ export class DubSession {
     this.claims.clear();
     this.ready.clear();
     this.version++;
-    this.video = { status: 'none', pct: 0, file: null, mime: null, duration: 0, height: 0, codec: null, h264: false };
+    this.video = { status: 'none', pct: 0, file: null, part: null, mime: null, duration: 0, height: 0, codec: null, h264: false };
     this.packStatus = { status: 'uploading', error: null, note: null };
     this.fileInfo = fileInfoOf([...files].map(([name, size]) => ({ name, size })));
     this.exportPending = false;
+    // Der PC kann ein fertiges Web-Pack liefern (er hat ffmpeg): dann wandelt der Server nichts um
+    this.web = this.emptyWeb();
+    this.web.can = !!(plan.web && plan.web.can);
+    if (this.web.can && packCache.takeWeb(dataDirOf(this.room), this.fileInfo.fp, this.web.file)) {
+      this.web.size = fs.statSync(this.web.file).size;
+      this.web.bytes = this.web.size;
+      this.web.complete = this.readWebManifest();
+      if (!this.web.complete) this.web = { ...this.emptyWeb(), can: true };
+    }
     // War dieses Pack schon einmal hier? Dann liegt alles bereit: nichts hochladen, nichts umwandeln
     this.cached = packCache.has(dataDirOf(this.room), this.fileInfo.fp, this.fileInfo.files);
     if (this.cached) {
@@ -236,20 +247,99 @@ export class DubSession {
     this.rescan();
   }
 
-  /** Braucht gerade jemand die Dateien vom Server? Das sind Browser, die das Pack nicht zwischengespeichert haben,
-   *  PCs mit Mod, denen es fehlt, und der Video-Export. Solange niemand sie braucht, bleibt das Pack auf dem PC,
-   *  der es gewählt hat: hoch kommen dann nur die kleinen Beschreibungen (Figuren, Texte, Zeiten). */
-  packWanted() {
-    if (!this.plan || this.plan.complete || this.exportPending) return true;
+  /** Wer braucht Dateien vom Server? kind 'game' = PC mit Mod, 'web' = Browser, null = alle.
+   *  Wer sich gemeldet hat, dass er das Pack schon hat (own), braucht nichts. Wer sich noch gar nicht
+   *  gemeldet hat, bekommt dafür eine kurze Frist. */
+  needy(kind = null) {
     const now = Date.now();
+    let n = 0;
     for (const p of this.room.players.values()) {
       if (p.kind !== 'phone' || !p.connected || p.left) continue;
+      if (kind && (p.client === 'game') !== (kind === 'game')) continue;
       const r = this.ready.get(p.id);
       if (r && r.version === this.version) {
-        if (!r.own) return true;
-      } else if (now - (this.seenAt.get(p.id) || 0) > WANT_GRACE_MS) return true;
+        if (!r.own) n++;
+      } else if (now - (this.seenAt.get(p.id) || 0) > WANT_GRACE_MS) n++;
     }
+    return n;
+  }
+
+  /** Braucht jemand im Browser das Web-Pack? Nur dann baut und schickt der PC es. */
+  webWanted() {
+    if (!this.web.can || this.web.complete) return false;
+    return this.needy('web') > 0;
+  }
+
+  /** Braucht gerade jemand die Originaldateien? Das sind PCs mit Mod, denen das Pack fehlt, Browser,
+   *  solange es kein Web-Pack gibt, und der Export, wenn das Video nur im Original vorliegt.
+   *  Solange niemand sie braucht, bleibt das Pack auf dem PC, der es gewählt hat: hoch kommen dann nur
+   *  die kleinen Beschreibungen (Figuren, Texte, Zeiten). */
+  packWanted() {
+    if (!this.plan || this.plan.complete) return true;
+    if (this.exportPending && !this.webHas(this.pack?.video)) return true;
+    if (this.needy('game') > 0) return true;
+    if (!this.web.can && this.needy('web') > 0) return true;
     return false;
+  }
+
+  emptyWeb() {
+    return { can: false, size: 0, bytes: 0, complete: false, head: 0, assets: new Map(),
+      file: path.join(this.dir, 'web', 'pack.vgpack'), notifiedAt: 0 };
+  }
+
+  /** Verzeichnis des Web-Packs lesen, sobald die ersten Bytes da sind. -> hat geklappt? */
+  readWebManifest() {
+    try {
+      const st = fs.statSync(this.web.file);
+      const head = Buffer.alloc(Math.min(st.size, 4 * MB));
+      const fd = fs.openSync(this.web.file, 'r');
+      try { fs.readSync(fd, head, 0, head.length, 0); } finally { fs.closeSync(fd); }
+      const m = readManifest(head);
+      if (!m) return false;
+      this.web.head = m.end;
+      this.web.assets = assetsOf(m.manifest, m.end, this.web.size || st.size);
+      return this.web.assets.size > 0;
+    } catch (e) {
+      console.warn('Web-Pack:', e.message);
+      this.web.can = false;
+      this.web.assets = new Map();
+      return false;
+    }
+  }
+
+  /** Liegt diese Datei fertig im Web-Pack? */
+  webHas(name) {
+    if (!name) return true;
+    const a = this.web.assets.get(name);
+    return !!a && this.web.bytes >= a.o + a.l;
+  }
+
+  /** Ein Stück des Web-Packs ist angekommen. */
+  webArrived(bytes) {
+    this.web.bytes = bytes;
+    let news = false;
+    if (!this.web.assets.size) news = this.readWebManifest();
+    if (this.web.size && bytes >= this.web.size && !this.web.complete) {
+      this.web.complete = true;
+      news = true;
+      packCache.storeWeb(dataDirOf(this.room), this.fileInfo.fp, this.web.file);
+      observeStat('webpack_mb', bytes / MB);
+    }
+    this.maybePrepareVideo();
+    this.recheckWait();
+    // Nicht bei jedem Stück melden: die Browser holen sich, was schon da ist, das reicht ein paar Mal je Sekunde
+    if (news || Date.now() - this.web.notifiedAt > 700) {
+      this.web.notifiedAt = Date.now();
+      this.onChange();
+    }
+  }
+
+  /** Der PC kann doch kein Web-Pack liefern (kein ffmpeg, Umwandlung fehlgeschlagen). */
+  webOff() {
+    if (!this.web.can) return;
+    this.web = this.emptyWeb();
+    this.maybePrepareVideo();
+    this.onChange();
   }
 
   /** Nach Ablauf der Frist neu senden: ab dann gilt, wer nichts gemeldet hat, als „braucht das Pack“. */
@@ -341,8 +431,12 @@ export class DubSession {
 
   /** Sind die Dateien dieser Zeile da? Ohne fortlaufendes Hochladen immer ja. */
   clipReady(id) {
-    if (!this.plan || this.plan.complete || !this.packWanted()) return true;   // niemand braucht die Dateien vom Server
-    return !!this.clips.get(id)?.have;
+    const c = this.clips.get(id);
+    if (!c) return false;
+    if (!this.plan || this.plan.complete) return true;
+    if (this.packWanted() && !c.have) return false;              // Originaldateien noch unterwegs
+    if (this.webWanted() && !(this.webHas(c.audio) && this.webHas(c.image))) return false;
+    return true;
   }
 
   /** Das Spiel hat alles hochgeladen. */
@@ -463,6 +557,7 @@ export class DubSession {
   /** Braucht jemand das Video vom Server? Nur Browser ohne eigenen Zwischenspeicher; PCs mit Mod haben das Pack.
    *  Ohne solche Leute wird gar nicht erst umgewandelt: das ist die teuerste Arbeit auf dem Server. */
   needsWebVideo() {
+    if (this.web.can) return false;   // der PC liefert das Video fertig mit, der Server wandelt nichts um
     for (const p of this.room.players.values()) {
       if (p.kind !== 'phone' || !p.connected || p.left || p.client === 'game') continue;
       const r = this.ready.get(p.id);
@@ -473,6 +568,14 @@ export class DubSession {
 
   /** Wird gerufen, sobald jemand dazukommt oder meldet, dass ihm etwas fehlt. */
   maybePrepareVideo() {
+    // Aus dem Web-Pack kommt es fertig: nichts umwandeln, nur eintragen
+    if (this.pack?.video && this.webHas(this.pack.video) && !this.video.part) {
+      const a = this.web.assets.get(this.pack.video);
+      this.video = { status: 'ready', pct: 1, file: this.web.file, part: { off: a.o, len: a.l },
+        mime: a.m || 'video/mp4', duration: this.video.duration || a.d || 0, height: 0, codec: 'h264', h264: true };
+      return this.onChange();
+    }
+    if (this.video.part) return;
     // Erst wenn die Datei wirklich da ist: beim laufenden Hochladen kennt der Server den Namen schon vorher
     if (this.pack?.video && this.video.status === 'none' && this.needsWebVideo()
         && fs.existsSync(path.join(this.packDir(), this.pack.video))) {
@@ -481,6 +584,8 @@ export class DubSession {
   }
 
   async prepareVideo() {
+    // Liegt es fertig im Web-Pack, ist nichts zu tun
+    if (this.pack?.video && this.webHas(this.pack.video)) return this.maybePrepareVideo();
     if (!this.needsWebVideo()) {
       // Niemand im Browser: das Video bleibt, wie es ist. Kommt jemand dazu, läuft maybePrepareVideo()
       this.video = { status: 'none', pct: 0, file: null, mime: null, duration: this.video.duration, height: 0, codec: null, h264: false };
@@ -552,13 +657,16 @@ export class DubSession {
   packJson() {
     if (!this.pack) return { version: this.version, orderVersion: this.orderVersion, pack: null };
     const base = `/api/rooms/${this.room.code}/dub`;
-    const f = (name) => (name ? `${base}/file/${encodeURIComponent(name)}` : null);
+    const w = this.web.can ? '?w=1' : '';
+    const f = (name) => (name ? `${base}/file/${encodeURIComponent(name)}${w}` : null);
     const done = this.plan && !this.plan.complete ? this.plan.done : null;
     return {
       version: this.version,
       orderVersion: this.orderVersion,
       pack: {
         fp: this.fileInfo.fp, folder: this.pack.folder || null,
+        // web: der Browser bekommt die umgewandelten Dateien aus dem Web-Pack (eigener Zwischenspeicher, kein fmt=mp3)
+        web: this.web.can || null,
         files: this.fileInfo.files.map((x) => ({ ...x, have: !done || done.has(x.name) })),
         title: this.pack.title, subtitle: this.pack.subtitle, authors: this.pack.authors, readme: this.pack.readme,
         icon: f(this.pack.icon), backing: f(this.pack.backing),
@@ -997,6 +1105,7 @@ export class DubSession {
       } : null,
       waitClip: this.waitClip,
       packWanted: this.packWanted(),
+      webPack: { can: this.web.can, wanted: this.webWanted(), bytes: this.web.bytes, complete: this.web.complete },
       offer: this.offer ? { ...this.offer, fromName: this.nameOf(this.offer.from), toName: this.nameOf(this.offer.to) } : null,
       video: { status: this.video.status, pct: Math.round(this.video.pct * 100) / 100, duration: this.video.duration },
       orderMode: this.orderMode,
@@ -1033,6 +1142,27 @@ export class DubSession {
 
   /* ---------- Export ---------- */
 
+  /** Datei aus dem Pack fuer ffmpeg: das Original, sonst aus dem Web-Pack herausgeschnitten. */
+  mediaFile(name, work) {
+    if (!name) return null;
+    const orig = path.join(this.packDir(), name);
+    if (fs.existsSync(orig)) return orig;
+    const a = this.webHas(name) ? this.web.assets.get(name) : null;
+    if (!a) return null;
+    const out = path.join(work, 'src_' + name.replace(/[^\w.-]/g, '_'));
+    if (!fs.existsSync(out)) {
+      const fd = fs.openSync(this.web.file, 'r');
+      try {
+        const buf = Buffer.alloc(a.l);
+        fs.readSync(fd, buf, 0, a.l, a.o);
+        fs.writeFileSync(out, buf);
+      } finally {
+        fs.closeSync(fd);
+      }
+    }
+    return out;
+  }
+
   async runExport() {
     if (!findFfmpeg()) throw new Error('Auf dem Server fehlt ffmpeg, deshalb geht der Video-Export hier nicht.');
     if (['queued', 'running'].includes(this.exportJob.status)) return;
@@ -1047,7 +1177,9 @@ export class DubSession {
     };
     try {
       job.status = 'running';
-      const duration = this.video.duration || (await probe(path.join(this.packDir(), this.pack.video)))?.duration || 0;
+      const source = this.mediaFile(this.pack.video, work);
+      if (!source) throw new Error('Das Video ist noch nicht da.');
+      const duration = this.video.duration || (await probe(source))?.duration || 0;
       if (!duration) throw new Error('Die Länge des Videos ist unbekannt.');
       if (duration > MAX_VIDEO_S) throw new Error('Das Video ist für den Export zu lang.');
       const frames = Math.round(duration * SR);
@@ -1065,7 +1197,8 @@ export class DubSession {
         else needOriginal.push(c);
       }
       tick(0.05);
-      const originals = needOriginal.map((c) => ({ src: path.join(this.packDir(), c.audio), out: path.join(work, `orig_${this.order.indexOf(c.id)}.raw`) }));
+      const originals = needOriginal.map((c) => ({ src: this.mediaFile(c.audio, work), out: path.join(work, `orig_${this.order.indexOf(c.id)}.raw`) }))
+        .filter((x) => x.src);
       await decodeOriginals(originals);
       for (const [i, c] of needOriginal.entries()) {
         const raw = originals[i].out;
@@ -1076,7 +1209,7 @@ export class DubSession {
       let backRaw = null;
       if (this.pack.backing) {
         backRaw = path.join(work, 'backing.raw');
-        await ffmpeg(['-i', path.join(this.packDir(), this.pack.backing), '-f', 's16le', '-ac', '2', '-ar', String(SR), backRaw], { timeoutMs: 5 * 60 * 1000 });
+        await ffmpeg(['-i', this.mediaFile(this.pack.backing, work), '-f', 's16le', '-ac', '2', '-ar', String(SR), backRaw], { timeoutMs: 5 * 60 * 1000 });
       }
       tick(0.25);
       // 3. Mischen (wie Voicitool: alles zusammen, zu laut -> gesamt leiser auf 0,99)
@@ -1085,10 +1218,13 @@ export class DubSession {
       tick(0.35);
       // 4. Video + Ton
       const out = path.join(work, 'export.mp4');
-      const source = path.join(this.packDir(), this.pack.video);
-      // Umgewandeltes Browser-Video (bis 720p) übernehmen, wenn die Quelle nicht größer ist; sonst neu aus der Quelle (bis 1080p)
-      const copyVideo = this.video.h264 && !!this.video.file && (this.video.file === source ? this.video.height <= 1080 : this.video.height <= 720);
-      const vsrc = copyVideo ? this.video.file : source;
+      // Aus dem Web-Pack kommt es schon als H.264: nur noch durchreichen, kein Umwandeln.
+      // Sonst das umgewandelte Browser-Video (bis 720p) übernehmen, wenn die Quelle nicht größer ist,
+      // und sonst neu aus der Quelle (bis 1080p).
+      const fromWeb = !!this.video.part;
+      const copyVideo = fromWeb || (this.video.h264 && !!this.video.file
+        && (this.video.file === source ? this.video.height <= 1080 : this.video.height <= 720));
+      const vsrc = fromWeb ? source : copyVideo ? this.video.file : source;
       const venc = copyVideo
         ? ['-c:v', 'copy']
         : ['-vf', "scale=-2:'trunc(min(1080,ih)/2)*2',format=yuv420p", '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23'];
@@ -1268,6 +1404,28 @@ async function decodeOriginals(items) {
  * HTTP und WebSocket
  * ------------------------------------------------------------------- */
 
+/** Teil einer Datei ausliefern (Web-Pack). Mit Bereichsanfragen, damit Videos springen können. */
+function sendPart(req, res, file, off, len, mime) {
+  res.set('Accept-Ranges', 'bytes');
+  res.type(mime || 'application/octet-stream');
+  let start = 0;
+  let end = len - 1;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.get('range') || '').trim());
+  if (m && (m[1] || m[2])) {
+    if (m[1]) {
+      start = Number(m[1]);
+      if (m[2]) end = Math.min(end, Number(m[2]));
+    } else {
+      start = Math.max(0, len - Number(m[2]));
+    }
+    if (!(start <= end && start < len)) return res.status(416).set('Content-Range', `bytes */${len}`).end();
+    res.status(206).set('Content-Range', `bytes ${start}-${end}/${len}`);
+  }
+  res.set('Content-Length', String(end - start + 1));
+  if (req.method === 'HEAD') return res.end();
+  fs.createReadStream(file, { start: off + start, end: off + end }).pipe(res);
+}
+
 /** Datei aus dem Upload in eine Datei schreiben, mit Größengrenze. offset > 0: anhängen (Upload in Stücken). */
 function receive(req, dest, max, offset = 0) {
   return new Promise((resolve, reject) => {
@@ -1380,7 +1538,8 @@ export function installDub(app, ctx) {
       a.dub.beginUpload(a.host && req.body?.stream ? req.body : null);
       broadcastState(a.room);
       // have: der Server kennt dieses Pack schon, der PC braucht nichts zu schicken
-      res.json({ ok: true, have: !!a.dub.cached });
+      // haveWeb: auch das fertige Web-Pack liegt hier, es muss nicht noch einmal gebaut werden
+      res.json({ ok: true, have: !!a.dub.cached, haveWeb: !!a.dub.web.complete });
     } catch (e) {
       res.status(409).json({ error: e.message });
     }
@@ -1411,6 +1570,42 @@ export function installDub(app, ctx) {
     } catch (e) {
       res.status(e.status || 500).json({ error: e.message });
     }
+  });
+
+  // Fertiges Web-Pack (.vgpack) vom PC, in Stücken. size = Gesamtgröße, offset = Stelle.
+  r.put('/:code/dub/pack/web', async (req, res) => {
+    const a = auth(req, res, { upload: true });
+    if (!a) return;
+    const d = a.dub;
+    if (!d.plan || !d.web.can) return res.status(409).json({ error: 'not_started' });
+    const offset = Math.max(0, Math.floor(Number(req.query.offset) || 0));
+    if (!offset) {
+      d.web.size = Math.max(0, Math.floor(Number(req.query.size) || 0));
+      d.web.bytes = 0;
+      d.web.complete = false;
+      d.web.assets = new Map();
+      fs.rmSync(d.web.file, { force: true });
+    }
+    const have = fs.existsSync(d.web.file) ? fs.statSync(d.web.file).size : 0;
+    if (offset !== have) return res.status(409).json({ error: 'bad_offset', have });
+    const budget = Math.min(MAX_PACK - have, storageLeft(dataDirOf(a.room)));
+    if (budget <= 0) return res.status(413).json({ error: 'too_large' });
+    try {
+      const bytes = await receive(req, d.web.file, have + budget, offset);
+      storageAdd(bytes - have);
+      d.webArrived(bytes);
+      res.json({ ok: true, bytes });
+    } catch (e) {
+      res.status(e.status || 500).json({ error: e.message });
+    }
+  });
+
+  // Der PC schafft kein Web-Pack (kein ffmpeg, Umwandlung fehlgeschlagen): ab jetzt wieder Originaldateien
+  r.post('/:code/dub/pack/web/off', (req, res) => {
+    const a = auth(req, res, { upload: true });
+    if (!a) return;
+    a.dub.webOff();
+    res.json({ ok: true });
   });
 
   r.put('/:code/dub/pack/zip', async (req, res) => {
@@ -1464,11 +1659,22 @@ export function installDub(app, ctx) {
     const a = auth(req, res);
     if (!a) return;
     const name = safeName(req.params.name);
-    const file = name && path.join(a.dub.packDir(), name);
-    if (!file || !fs.existsSync(file)) return res.status(404).json({ error: 'not_found' });
+    if (!name) return res.status(400).json({ error: 'bad_name' });
+    const fmt = String(req.query.fmt || '');
+    // ?w=1: die fertige Fassung aus dem Web-Pack (Browser). Ohne: das Original (Spiel mit Mod).
+    const fromWeb = !!req.query.w && a.dub.webHas(name);
+    if (fromWeb && !fmt) {
+      const part = a.dub.web.assets.get(name);
+      res.set('Cache-Control', 'private, max-age=86400');
+      asFile(res);
+      return sendPart(req, res, a.dub.web.file, part.o, part.l, part.m);
+    }
+    // Umwandeln: aus dem Original, und wenn es das nicht mehr gibt, aus dem Web-Pack
+    const orig = path.join(a.dub.packDir(), name);
+    const file = fs.existsSync(orig) ? orig : fromWeb ? a.dub.mediaFile(name, path.join(a.dub.dir, 'work')) : null;
+    if (!file) return res.status(404).json({ error: 'not_found' });
     res.set('Cache-Control', 'private, max-age=86400');
     asFile(res);
-    const fmt = String(req.query.fmt || '');
     if ((fmt === 'mp3' || fmt === 'wav') && findFfmpeg() && extOf(name) !== fmt) {
       const out = path.join(a.dub.dir, 'web', `${name}.${fmt}`);
       const conv = fmt === 'mp3' ? ['-ac', '2', '-b:a', '160k'] : ['-ac', '1', '-ar', String(SR), '-c:a', 'pcm_s16le'];
@@ -1492,6 +1698,7 @@ export function installDub(app, ctx) {
     if (!v.file || !fs.existsSync(v.file)) return res.status(404).json({ error: 'video_not_ready' });
     res.set('Cache-Control', 'private, max-age=86400');
     asFile(res);
+    if (v.part) return sendPart(req, res, v.file, v.part.off, v.part.len, v.mime || 'video/mp4');
     res.type(v.mime || 'video/mp4').sendFile(v.file);
   });
 

@@ -342,4 +342,12 @@ window.VG_LANG.nl = { strings: {
   'Mitspieler ausblenden': 'Spelers verbergen',
   'Zeile geben': 'Zin geven',
   '{} hat {} eine Zeile angeboten.': '{} heeft {} een zin aangeboden.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'De server krijgt zo een update en start even opnieuw op. Daarna moet je opnieuw meedoen.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'De server krijgt zo een update en start even opnieuw op. Daarna moeten jullie opnieuw meedoen.',
+  'Dieser Mod ist zu alt für den Server.': 'Deze mod is te oud voor de server.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Er is een nieuwere versie van de mod voor de server.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Open Voicitool, dan wordt hij bijgewerkt.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Start het spel opnieuw, dan haalt hij de update op.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pack wordt klaargemaakt voor de browser … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Browserpack wordt geüpload … {} %',
 } };

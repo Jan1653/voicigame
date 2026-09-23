@@ -127,6 +127,14 @@ func _set_chars(file: String, chars: String) -> void:
 
 
 
+## Das Pack ist beim Server angekommen: entweder alle Originaldateien, oder das fertige Web-Pack
+## für die Browser (dann bleiben die Originale auf diesem PC, und das ist der bessere Fall).
+func _pack_delivered(hook) -> bool:
+	if hook._upload_state == "done":
+		return true
+	return hook._upload_state in ["local", "uploading"] and str(hook._web.get("state", "")) == "done"
+
+
 func _check(nr: String, ok: bool, text: String) -> void:
 	d._note("PRÜFUNG %s: %s, %s" % [nr, "OK" if ok else "FEHLER", text])
 
@@ -194,14 +202,17 @@ func _dub() -> void:
 		d._note("FEHLER: Dub-Hook nicht angehängt")
 		return
 	t = 0.0
-	while hook._upload_state != "done" and t < 90.0:
+	# Fertig ist es, wenn das Pack beim Server ist und die beiden Fehlversuche verbraucht sind
+	# (oder nichts mehr hochgeladen wird, weil der Server das Pack schon kannte).
+	while t < 90.0 and not (_pack_delivered(hook)
+			and (DubHook.test_fail_uploads == 0 or hook._upload_state in ["done", "local"])):
 		await _wait(0.5)
 		t += 0.5
 	# Kennt der Server das Pack schon (Pack-Speicher), wird gar nichts hochgeladen: dann bleiben die
 	# absichtlichen Fehlschläge ungenutzt stehen, und das ist genauso richtig.
 	var from_cache: bool = DubHook.test_fail_uploads == 2
-	_check("18 Hochladen", hook._upload_state == "done" and (DubHook.test_fail_uploads == 0 or from_cache),
-		"%s nach %.1f s, %s" % [hook._upload_state, t,
+	_check("18 Hochladen", _pack_delivered(hook) and (DubHook.test_fail_uploads == 0 or from_cache),
+		"%s, Web-Pack %s, nach %.1f s, %s" % [hook._upload_state, str(hook._web.get("state", "")), t,
 		"Pack lag schon auf dem Server" if from_cache else "zwei Stücke absichtlich gescheitert und wiederholt"])
 	hook._claim_local("Brian")
 	await _wait(3.0)
@@ -267,9 +278,14 @@ func _dub() -> void:
 		d._note("Zeile %d %s: %s %.2f s, Wertung %.0f %%" % [i + 1, inst.shared_omniclip.file_name_agnostic,
 			a.get_class() if a else "KEINE", a.get_length() if a else 0.0, clampf(inst.score, 0, 5) * 20.0])
 	var local_takes: Array = dv.get("takes", []).filter(func(x): return x.playerId == "local-1").map(func(x): return x.clipId)
-	_check("4 PC vor dem Server", saw_pending_wait and local_takes.has("6_otoole3") and str(dv.get("phase", "")) == "results",
-		"PC-Aufnahmen am Server: %s, musste warten: %s" % [local_takes, saw_pending_wait])
-	_check("9 Knöpfe", enabled_after_web.has(5) and enabled_after_web.has(6), "Anhören und Mikrofon frei in PC-Zeilen %s" % [enabled_after_web.keys()])
+	# Welche Zeilen der PC bekommt, entscheidet der Server (und die Lobby mittendrin würfelt neu).
+	# Geprüft wird deshalb: jede Zeile, die der PC aufgenommen hat, liegt am Ende auch auf dem Server.
+	# saw_pending_wait ist nur Beobachtung: seit das Pack nicht mehr die Leitung belegt, sind die
+	# PC-Aufnahmen meist schon oben, bevor das Spiel weiterläuft.
+	var local_missing: Array = hook._uploaded_local.keys().filter(func(i): return not local_takes.has(hook.order[i]) if i < hook.order.size() else false)
+	_check("4 PC vor dem Server", not local_takes.is_empty() and local_missing.is_empty() and str(dv.get("phase", "")) == "results",
+		"PC-Aufnahmen am Server: %s, fehlen: %s, musste warten: %s" % [local_takes, local_missing, saw_pending_wait])
+	_check("9 Knöpfe", enabled_after_web.size() >= 2, "Anhören und Mikrofon frei in PC-Zeilen %s" % [enabled_after_web.keys()])
 	var inst4 = dm.performance_array[3]
 	var broken: Array = hook._take_fail.keys()
 	_check("19 kaputte Aufnahme", inst4.member_audio == inst4.shared_omniclip.clip_audio and not broken.is_empty(),

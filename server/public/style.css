@@ -479,3 +479,16 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 800; font-
 [data-style="simple"] .lang-opt:hover, [data-style="simple"] .lang-opt:focus-visible { background: #eef3f8; }
 [data-style="simple"][data-theme="dark"] .lang-menu { background: var(--surface); border-color: var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .5); }
 [data-style="simple"][data-theme="dark"] .lang-opt:hover, [data-style="simple"][data-theme="dark"] .lang-opt:focus-visible { background: var(--surface-2); }
+
+/* Hinweis des Servers (Wartung, Ankündigung): steht über allem, verschwindet nach einem Tipp */
+.notice {
+  margin: 0;
+  padding: 10px 16px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.35;
+  background: #ffd75e;
+  color: #3a2c00;
+  cursor: pointer;
+  white-space: pre-line;
+}

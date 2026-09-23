@@ -342,4 +342,12 @@ window.VG_LANG.zh = { strings: {
   'Mitspieler ausblenden': '隐藏玩家',
   'Zeile geben': '让出台词',
   '{} hat {} eine Zeile angeboten.': '{} 已把一句台词让给 {}。',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': '服务器马上要更新并短暂重启。之后需要重新加入。',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': '服务器马上要更新并短暂重启。之后你们需要重新加入。',
+  'Dieser Mod ist zu alt für den Server.': '这个模组对服务器来说太旧了。',
+  'Für den Server gibt es eine neuere Version des Mods.': '服务器有更新版本的模组。',
+  'Voicitool öffnen, dann wird er aktualisiert.': '打开 Voicitool，它就会更新。',
+  'Starte das Spiel neu, dann holt er sich das Update.': '重新启动游戏，它会自己获取更新。',
+  'Pack wird für den Browser vorbereitet … {} %': '正在为浏览器准备音频包 … {} %',
+  'Browser-Pack wird hochgeladen … {} %': '正在上传浏览器音频包 … {} %',
 } };

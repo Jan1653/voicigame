@@ -342,4 +342,12 @@ window.VG_LANG.vi = { strings: {
   'Mitspieler ausblenden': 'Ẩn người chơi',
   'Zeile geben': 'Nhường lời thoại',
   '{} hat {} eine Zeile angeboten.': '{} đã nhường một lời thoại cho {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Máy chủ sắp cập nhật và khởi động lại một lát. Sau đó bạn phải vào lại.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Máy chủ sắp cập nhật và khởi động lại một lát. Sau đó các bạn phải vào lại.',
+  'Dieser Mod ist zu alt für den Server.': 'Bản mod này quá cũ so với máy chủ.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Có bản mod mới hơn cho máy chủ.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Mở Voicitool, nó sẽ được cập nhật.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Khởi động lại game, nó sẽ tự tải bản cập nhật.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Đang chuẩn bị pack cho trình duyệt … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Đang tải pack cho trình duyệt lên … {} %',
 } };

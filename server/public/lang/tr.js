@@ -342,4 +342,12 @@ window.VG_LANG.tr = { strings: {
   'Mitspieler ausblenden': 'Oyuncuları gizle',
   'Zeile geben': 'Repliği ver',
   '{} hat {} eine Zeile angeboten.': '{}, {} kişisine bir replik önerdi.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Sunucu birazdan güncellenip kısa süre yeniden başlayacak. Sonra tekrar katılman gerekiyor.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Sunucu birazdan güncellenip kısa süre yeniden başlayacak. Sonra tekrar katılmanız gerekiyor.',
+  'Dieser Mod ist zu alt für den Server.': 'Bu mod sunucu için çok eski.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Sunucu için modun daha yeni bir sürümü var.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Voicitool aç, güncellensin.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Oyunu yeniden başlat, güncellemeyi kendisi alır.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Paket tarayıcı için hazırlanıyor … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Tarayıcı paketi yükleniyor … {} %',
 } };

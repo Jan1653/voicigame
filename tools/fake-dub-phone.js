@@ -35,6 +35,7 @@ let hostKey = '';
 let me = '';
 let st = null;
 let packVersion = -1;
+let tries = 0;
 let pack = null;
 let claimed = false;
 let sentFor = new Set();
@@ -90,6 +91,8 @@ async function uploadPack() {
   log('Ordner hochgeladen:', files.length, 'Dateien,', r.status, JSON.stringify(await r.json()), `${Date.now() - t0} ms`);
 }
 
+const packUrl = (u, extra = '') => `${SERVER}${u}${u.includes('?') ? '&' : '?'}${extra}${q()}`;
+
 async function loadPack(version) {
   const r = await fetch(`${SERVER}/api/rooms/${code}/dub/pack.json?${q()}`);
   const j = await r.json();
@@ -100,11 +103,13 @@ async function loadPack(version) {
   const need = new Set(urls).size;
   let have = 0;
   for (const u of new Set(urls)) {
-    const res = await fetch(`${SERVER}${u}?${q()}`);
+    const res = await fetch(packUrl(u));
     if (res.ok) { await res.arrayBuffer(); have++; }
   }
   log(`Pack „${pack.title}“ geladen: ${pack.clips.length} Zeilen, ${have}/${need} Dateien`);
   wsSend({ type: 'dub.ready', have, need, version });
+  // Aus dem Spiel kommen die Dateien nach und nach (und das Web-Pack wird erst gebaut): noch einmal schauen
+  if (have < need && tries < 20) { tries++; setTimeout(() => loadPack(version).catch(() => {}), 3000); }
 }
 
 function wavPcm(buf) {
@@ -138,7 +143,7 @@ async function record(clipId) {
   }
   log(`Ich bin dran: ${clipId} (${(clip.chars || []).join(', ')}) „${clip.caption.slice(0, 50)}“`);
   wsSend({ type: 'dub.activity', what: 'listen' });
-  const res = await fetch(`${SERVER}${clip.audio}?fmt=wav&${q()}`);
+  const res = await fetch(packUrl(clip.audio, 'fmt=wav&'));
   let pcm = res.ok ? wavPcm(await res.arrayBuffer()) : null;
   if (!pcm) { log('FEHLER: Clip als WAV nicht geladen', res.status); pcm = Buffer.alloc(44100 * 2); }
   if (mode === 'still') pcm = Buffer.alloc(pcm.length);
@@ -170,7 +175,7 @@ async function finishLead() {
   if (out) {
     fs.mkdirSync(out, { recursive: true });
     for (const [url, file] of [[`/api/rooms/${code}/dub/export.mp4`, 'export.mp4'], [`/api/rooms/${code}/dub/takes.zip`, 'aufnahmen.zip']]) {
-      const r = await fetch(`${SERVER}${url}?${q()}`);
+      const r = await fetch(packUrl(url));
       const b = Buffer.from(await r.arrayBuffer());
       fs.writeFileSync(path.join(out, file), b);
       log(`${file}: ${r.status}, ${b.length} Bytes, ${r.headers.get('content-disposition') || ''}`);

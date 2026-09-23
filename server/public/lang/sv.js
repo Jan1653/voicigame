@@ -342,4 +342,12 @@ window.VG_LANG.sv = { strings: {
   'Mitspieler ausblenden': 'Dölj spelare',
   'Zeile geben': 'Ge repliken',
   '{} hat {} eine Zeile angeboten.': '{} har erbjudit {} en replik.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Servern får snart en uppdatering och startar om en kort stund. Sedan måste du gå med igen.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Servern får snart en uppdatering och startar om en kort stund. Sedan måste ni gå med igen.',
+  'Dieser Mod ist zu alt für den Server.': 'Den här modden är för gammal för servern.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Det finns en nyare version av modden för servern.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Öppna Voicitool, då uppdateras den.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Starta om spelet, då hämtar det uppdateringen.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Packet görs klart för webbläsaren … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Webbläsarpacket laddas upp … {} %',
 } };

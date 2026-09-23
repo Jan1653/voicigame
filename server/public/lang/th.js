@@ -342,4 +342,12 @@ window.VG_LANG.th = { strings: {
   'Mitspieler ausblenden': 'ซ่อนผู้เล่น',
   'Zeile geben': 'ยกบทให้',
   '{} hat {} eine Zeile angeboten.': '{} เสนอบทให้ {} แล้ว',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'เซิร์ฟเวอร์กำลังจะอัปเดตและรีสตาร์ทสักครู่ หลังจากนั้นต้องเข้าร่วมใหม่',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'เซิร์ฟเวอร์กำลังจะอัปเดตและรีสตาร์ทสักครู่ หลังจากนั้นพวกคุณต้องเข้าร่วมใหม่',
+  'Dieser Mod ist zu alt für den Server.': 'ม็อดนี้เก่าเกินไปสำหรับเซิร์ฟเวอร์',
+  'Für den Server gibt es eine neuere Version des Mods.': 'มีม็อดเวอร์ชันใหม่กว่าสำหรับเซิร์ฟเวอร์',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'เปิด Voicitool แล้วม็อดจะอัปเดต',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'เริ่มเกมใหม่ แล้วม็อดจะดาวน์โหลดอัปเดตเอง',
+  'Pack wird für den Browser vorbereitet … {} %': 'กำลังเตรียมแพ็กสำหรับเบราว์เซอร์ … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'กำลังอัปโหลดแพ็กสำหรับเบราว์เซอร์ … {} %',
 } };

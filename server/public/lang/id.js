@@ -342,4 +342,12 @@ window.VG_LANG.id = { strings: {
   'Mitspieler ausblenden': 'Sembunyikan pemain',
   'Zeile geben': 'Beri barisnya',
   '{} hat {} eine Zeile angeboten.': '{} menawarkan satu baris ke {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Server akan diperbarui dan restart sebentar. Setelah itu kamu harus bergabung lagi.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Server akan diperbarui dan restart sebentar. Setelah itu kalian harus bergabung lagi.',
+  'Dieser Mod ist zu alt für den Server.': 'Mod ini terlalu lama untuk server.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Ada versi mod yang lebih baru untuk server.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Buka Voicitool, nanti mod diperbarui.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Mulai ulang game, nanti update diambil sendiri.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pack disiapkan untuk browser … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Pack browser sedang diunggah … {} %',
 } };

@@ -342,4 +342,12 @@ window.VG_LANG.ro = { strings: {
   'Mitspieler ausblenden': 'Ascunde jucătorii',
   'Zeile geben': 'Dă replica',
   '{} hat {} eine Zeile angeboten.': '{} i-a oferit o replică lui {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Serverul primește în curând o actualizare și repornește scurt. După aceea trebuie să intri din nou.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Serverul primește în curând o actualizare și repornește scurt. După aceea trebuie să intrați din nou.',
+  'Dieser Mod ist zu alt für den Server.': 'Acest mod este prea vechi pentru server.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Există o versiune mai nouă a modului pentru server.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Deschide Voicitool și se va actualiza.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Repornește jocul și își ia singur actualizarea.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pachetul se pregătește pentru browser … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Pachetul pentru browser se încarcă … {} %',
 } };

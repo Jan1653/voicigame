@@ -342,4 +342,12 @@ window.VG_LANG.el = { strings: {
   'Mitspieler ausblenden': 'Απόκρυψη παικτών',
   'Zeile geben': 'Δώσε την ατάκα',
   '{} hat {} eine Zeile angeboten.': 'Ο/Η {} πρόσφερε μια ατάκα σε {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Ο διακομιστής θα ενημερωθεί και θα κάνει σύντομη επανεκκίνηση. Μετά θα πρέπει να μπεις ξανά.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Ο διακομιστής θα ενημερωθεί και θα κάνει σύντομη επανεκκίνηση. Μετά θα πρέπει να μπείτε ξανά.',
+  'Dieser Mod ist zu alt für den Server.': 'Αυτό το mod είναι πολύ παλιό για τον διακομιστή.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Υπάρχει νεότερη έκδοση του mod για τον διακομιστή.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Άνοιξε το Voicitool και θα ενημερωθεί.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Ξεκίνα ξανά το παιχνίδι και θα κατεβάσει την ενημέρωση.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Το pack ετοιμάζεται για τον browser … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Το pack για τον browser ανεβαίνει … {} %',
 } };

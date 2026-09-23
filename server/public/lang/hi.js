@@ -342,4 +342,12 @@ window.VG_LANG.hi = { strings: {
   'Mitspieler ausblenden': 'खिलाड़ी छिपाओ',
   'Zeile geben': 'लाइन दो',
   '{} hat {} eine Zeile angeboten.': '{} ने {} को एक लाइन दी है।',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'सर्वर अभी अपडेट लेकर थोड़ी देर के लिए रीस्टार्ट होगा। उसके बाद फिर से जुड़ना होगा।',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'सर्वर अभी अपडेट लेकर थोड़ी देर के लिए रीस्टार्ट होगा। उसके बाद आप सबको फिर से जुड़ना होगा।',
+  'Dieser Mod ist zu alt für den Server.': 'यह मॉड सर्वर के लिए बहुत पुराना है।',
+  'Für den Server gibt es eine neuere Version des Mods.': 'सर्वर के लिए मॉड का नया संस्करण उपलब्ध है।',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Voicitool खोलें, तब वह अपडेट हो जाएगा।',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'गेम फिर से शुरू करें, तब अपडेट अपने आप आ जाएगा।',
+  'Pack wird für den Browser vorbereitet … {} %': 'पैक ब्राउज़र के लिए तैयार हो रहा है … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'ब्राउज़र पैक अपलोड हो रहा है … {} %',
 } };

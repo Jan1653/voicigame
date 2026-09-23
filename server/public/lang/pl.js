@@ -342,4 +342,12 @@ window.VG_LANG.pl = { strings: {
   'Mitspieler ausblenden': 'Ukryj graczy',
   'Zeile geben': 'Oddaj kwestię',
   '{} hat {} eine Zeile angeboten.': '{} zaproponował(a) kwestię {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Serwer zaraz dostanie aktualizację i na chwilę się zrestartuje. Potem trzeba dołączyć od nowa.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Serwer zaraz dostanie aktualizację i na chwilę się zrestartuje. Potem musicie dołączyć od nowa.',
+  'Dieser Mod ist zu alt für den Server.': 'Ten mod jest za stary dla serwera.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Dla serwera jest nowsza wersja moda.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Otwórz Voicitool, wtedy się zaktualizuje.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Uruchom grę ponownie, wtedy pobierze aktualizację.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pack jest przygotowywany dla przeglądarki … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Pack dla przeglądarki jest wysyłany … {} %',
 } };

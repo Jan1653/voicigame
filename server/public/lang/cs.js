@@ -342,4 +342,12 @@ window.VG_LANG.cs = { strings: {
   'Mitspieler ausblenden': 'Skrýt hráče',
   'Zeile geben': 'Dát repliku',
   '{} hat {} eine Zeile angeboten.': '{} nabídl(a) repliku hráči {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Server za chvíli dostane aktualizaci a krátce se restartuje. Potom se musíš připojit znovu.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Server za chvíli dostane aktualizaci a krátce se restartuje. Potom se musíte připojit znovu.',
+  'Dieser Mod ist zu alt für den Server.': 'Tenhle mod je pro server příliš starý.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Pro server je novější verze modu.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Otevři Voicitool, pak se aktualizuje.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Restartuj hru, pak si aktualizaci stáhne.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pack se připravuje pro prohlížeč … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Pack pro prohlížeč se nahrává … {} %',
 } };

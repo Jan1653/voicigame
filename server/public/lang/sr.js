@@ -342,4 +342,12 @@ window.VG_LANG.sr = { strings: {
   'Mitspieler ausblenden': 'Sakrij igrače',
   'Zeile geben': 'Daj repliku',
   '{} hat {} eine Zeile angeboten.': '{} je ponudio/la repliku igraču {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Server uskoro dobija ažuriranje i nakratko se restartuje. Posle toga moraš ponovo da se pridružiš.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Server uskoro dobija ažuriranje i nakratko se restartuje. Posle toga morate ponovo da se pridružite.',
+  'Dieser Mod ist zu alt für den Server.': 'Ovaj mod je prestar za server.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Za server postoji novija verzija moda.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Otvori Voicitool, pa će se ažurirati.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Ponovo pokreni igru, pa će preuzeti ažuriranje.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pack se priprema za pregledač … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Pack za pregledač se šalje … {} %',
 } };

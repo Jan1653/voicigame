@@ -342,4 +342,12 @@ window.VG_LANG.hu = { strings: {
   'Mitspieler ausblenden': 'Játékosok elrejtése',
   'Zeile geben': 'Sor átadása',
   '{} hat {} eine Zeile angeboten.': '{} felajánlott egy sort neki: {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'A szerver mindjárt frissül és rövid időre újraindul. Utána újra be kell lépned.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'A szerver mindjárt frissül és rövid időre újraindul. Utána újra be kell lépnetek.',
+  'Dieser Mod ist zu alt für den Server.': 'Ez a mod túl régi a szerverhez.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Van újabb verzió a modból a szerverhez.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Nyisd meg a Voicitoolt, akkor frissül.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Indítsd újra a játékot, akkor letölti a frissítést.',
+  'Pack wird für den Browser vorbereitet … {} %': 'A csomag készül a böngészőhöz … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'A böngészőcsomag feltöltése … {} %',
 } };

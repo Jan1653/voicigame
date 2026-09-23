@@ -251,6 +251,11 @@ function onMessage(msg) {
     case 'game.started':
       S.lastResult = null;
       break;
+    case 'notice':
+      showNotice(msg.code === 'restart'
+        ? t('Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.')
+        : msg.text);
+      break;
     case 'kicked':
       S.joined = false;
       store(S.code, null);
@@ -1333,6 +1338,18 @@ function renderEnd() {
     })
   );
 }
+
+/** Hinweis des Servers (Wartung, Neustart, Ankündigung) oben auf der Seite. */
+function showNotice(text) {
+  if (!text) return;
+  const n = $('#notice');
+  n.textContent = text;
+  n.hidden = false;
+  n.onclick = () => { n.hidden = true; };
+}
+
+// Steht in <DATA_DIR>/notice.txt, sonst kommt nichts
+fetch('/api/notice').then((r) => r.json()).then((d) => showNotice(d?.text)).catch(() => {});
 
 let toastTimer;
 function toast(text, ms = 3000) {

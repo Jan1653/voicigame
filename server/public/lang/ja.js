@@ -342,4 +342,12 @@ window.VG_LANG.ja = { strings: {
   'Mitspieler ausblenden': 'プレイヤーを隠す',
   'Zeile geben': 'セリフを渡す',
   '{} hat {} eine Zeile angeboten.': '{} が {} にセリフを提案しました。',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'サーバーはまもなく更新のため少し再起動します。そのあと入り直してください。',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'サーバーはまもなく更新のため少し再起動します。そのあと入り直してください。',
+  'Dieser Mod ist zu alt für den Server.': 'このMODはサーバーには古すぎます。',
+  'Für den Server gibt es eine neuere Version des Mods.': 'サーバー向けの新しいMODがあります。',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Voicitoolを開くと更新されます。',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'ゲームを再起動すると更新を取得します。',
+  'Pack wird für den Browser vorbereitet … {} %': 'パックをブラウザ用に準備中 … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'ブラウザ用パックをアップロード中 … {} %',
 } };

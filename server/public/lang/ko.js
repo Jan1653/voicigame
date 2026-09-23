@@ -342,4 +342,12 @@ window.VG_LANG.ko = { strings: {
   'Mitspieler ausblenden': '플레이어 숨기기',
   'Zeile geben': '대사 주기',
   '{} hat {} eine Zeile angeboten.': '{}(이)가 {}에게 대사를 제안했어.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': '서버가 곧 업데이트로 잠시 재시작합니다. 그 뒤에 다시 들어와야 해요.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': '서버가 곧 업데이트로 잠시 재시작합니다. 그 뒤에 다시 들어와야 해요.',
+  'Dieser Mod ist zu alt für den Server.': '이 모드는 서버에 비해 너무 오래되었습니다.',
+  'Für den Server gibt es eine neuere Version des Mods.': '서버용 모드의 새 버전이 있습니다.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Voicitool을 열면 업데이트됩니다.',
+  'Starte das Spiel neu, dann holt er sich das Update.': '게임을 다시 시작하면 업데이트를 받아옵니다.',
+  'Pack wird für den Browser vorbereitet … {} %': '브라우저용 팩 준비 중 … {} %',
+  'Browser-Pack wird hochgeladen … {} %': '브라우저 팩 업로드 중 … {} %',
 } };

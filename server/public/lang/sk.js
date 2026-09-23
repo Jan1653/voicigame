@@ -342,4 +342,12 @@ window.VG_LANG.sk = { strings: {
   'Mitspieler ausblenden': 'Skryť hráčov',
   'Zeile geben': 'Dať repliku',
   '{} hat {} eine Zeile angeboten.': '{} ponúkol(la) repliku hráčovi {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Server o chvíľu dostane aktualizáciu a krátko sa reštartuje. Potom sa musíš pripojiť znova.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Server o chvíľu dostane aktualizáciu a krátko sa reštartuje. Potom sa musíte pripojiť znova.',
+  'Dieser Mod ist zu alt für den Server.': 'Tento mod je pre server príliš starý.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Pre server je novšia verzia modu.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Otvor Voicitool, potom sa aktualizuje.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Reštartuj hru, potom si aktualizáciu stiahne.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pack sa pripravuje pre prehliadač … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Pack pre prehliadač sa nahráva … {} %',
 } };

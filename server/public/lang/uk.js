@@ -342,4 +342,12 @@ window.VG_LANG.uk = { strings: {
   'Mitspieler ausblenden': 'Сховати гравців',
   'Zeile geben': 'Віддати репліку',
   '{} hat {} eine Zeile angeboten.': '{} запропонував(ла) репліку {}.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Сервер скоро оновиться й ненадовго перезапуститься. Після цього доведеться приєднатися знову.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Сервер скоро оновиться й ненадовго перезапуститься. Після цього вам доведеться приєднатися знову.',
+  'Dieser Mod ist zu alt für den Server.': 'Цей мод застарий для сервера.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Для сервера є новіша версія мода.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Відкрий Voicitool, і він оновиться.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Перезапусти гру, і вона завантажить оновлення.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Пак готується для браузера … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Пак для браузера завантажується … {} %',
 } };

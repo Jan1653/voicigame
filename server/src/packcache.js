@@ -52,6 +52,43 @@ export function take(dataDir, fp, packDir, webDir) {
   return { video };
 }
 
+/** Liegt das fertige Web-Pack (.vgpack) zu diesem Pack hier? */
+export function hasWeb(dataDir, fp) {
+  return !!fp && fs.existsSync(path.join(dirOf(dataDir, fp), 'web.vgpack'));
+}
+
+/** Web-Pack in den Raum holen. -> hat geklappt? */
+export function takeWeb(dataDir, fp, dest) {
+  const src = path.join(dirOf(dataDir, fp), 'web.vgpack');
+  try {
+    if (!fs.existsSync(src)) return false;
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.rmSync(dest, { force: true });
+    copyOrLink(src, dest);
+    touch(dirOf(dataDir, fp));
+    countStat('webpack_cache_hits');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Web-Pack merken: dasselbe Pack wird nie wieder umgewandelt und nie wieder hochgeladen. */
+export function storeWeb(dataDir, fp, file) {
+  if (!fp || !file) return;
+  const dir = dirOf(dataDir, fp);
+  try {
+    if (!fs.existsSync(file)) return;
+    fs.mkdirSync(dir, { recursive: true });
+    const dest = path.join(dir, 'web.vgpack');
+    if (!fs.existsSync(dest)) copyOrLink(file, dest);
+    touch(dir);
+    prune(dataDir);
+  } catch (e) {
+    console.warn('Web-Pack nicht gemerkt:', e.message);
+  }
+}
+
 /** Pack aufnehmen (nach dem Hochladen). video: umgewandeltes Video oder null. */
 export function store(dataDir, fp, packDir, video) {
   if (!fp) return;

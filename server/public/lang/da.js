@@ -342,4 +342,12 @@ window.VG_LANG.da = { strings: {
   'Mitspieler ausblenden': 'Skjul spillere',
   'Zeile geben': 'Giv replikken',
   '{} hat {} eine Zeile angeboten.': '{} har tilbudt {} en replik.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach musst du neu beitreten.': 'Serveren får snart en opdatering og genstarter kort. Derefter skal du være med igen.',
+  'Der Server bekommt gleich ein Update und startet kurz neu. Danach müsst ihr neu beitreten.': 'Serveren får snart en opdatering og genstarter kort. Derefter skal I være med igen.',
+  'Dieser Mod ist zu alt für den Server.': 'Denne mod er for gammel til serveren.',
+  'Für den Server gibt es eine neuere Version des Mods.': 'Der findes en nyere version af modden til serveren.',
+  'Voicitool öffnen, dann wird er aktualisiert.': 'Åbn Voicitool, så bliver den opdateret.',
+  'Starte das Spiel neu, dann holt er sich das Update.': 'Genstart spillet, så henter det opdateringen.',
+  'Pack wird für den Browser vorbereitet … {} %': 'Pakken gøres klar til browseren … {} %',
+  'Browser-Pack wird hochgeladen … {} %': 'Browserpakken uploades … {} %',
 } };

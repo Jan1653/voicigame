@@ -16,6 +16,7 @@ import { count as countStat, peak as peakStat, observe as observeStat, tag as ta
 import { admit, isOverloaded, MAX_ACTIVE_ROOMS } from './queue.js';
 import { installMod } from './mod.js';
 import { install as installErrLog, fromWeb as logFromWeb } from './errlog.js';
+import { installNotice, noticesFor, tooOld, WANT_MOD } from './notice.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -135,6 +136,21 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, rooms: rooms.size, busy });
 });
 
+// Der Server wird gleich neu gestartet (Update): allen Bescheid sagen, die gerade spielen.
+// Ruft deploy/update.sh auf, bevor es wirklich neu baut. Nur von innen erreichbar, wie /api/health.
+app.get('/api/restart-soon', (req, res) => {
+  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip)) return res.status(404).end();
+  const secs = Math.min(600, Math.max(5, Math.floor(Number(req.query.s) || 30)));
+  const note = { type: 'notice', code: 'restart', level: 'info', text: '', in: secs };
+  let n = 0;
+  for (const room of rooms.values()) {
+    for (const ws of room.hosts) { send(ws, note); n++; }
+    for (const p of room.players.values()) if (p.connected && p.ws) { send(p.ws, note); n++; }
+  }
+  console.log(`Neustart in ${secs} s angekündigt (${n} Verbindungen)`);
+  res.json({ ok: true, told: n });
+});
+
 // Fehler aus den Browsern der Spieler: nur der Text, keine Namen und keine Adressen. Höchstens 20 je Stunde
 // und Anschluss, damit eine kaputte Seite den Server nicht zuschreibt.
 const webLog = new Map();
@@ -155,8 +171,15 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 const dub = installDub(app, { getRoom, isHost, send, toHosts, toPhones, broadcastState });
 // Aktuelle Mod-Dateien für den Auto-Updater im Spiel
 installMod(app);
+// Hinweise (Wartung, zu alte Mod)
+installNotice(app, DATA_DIR);
 
-app.post('/api/rooms', (req, res) => {
+app.post('/api/rooms', express.json({ limit: '2kb' }), (req, res) => {
+  // Mod zu alt: der Raum würde hier nur halb funktionieren, deshalb gleich sagen, was zu tun ist
+  if (req.body?.client === 'game' && tooOld(req.body.version)) {
+    countStat('mod_too_old');
+    return res.status(426).json({ error: 'mod_old', need: WANT_MOD, message: 'Diese Version des Mods ist zu alt für den Server.' });
+  }
   // Voll oder überlastet: nicht ablehnen, sondern der Reihe nach warten lassen (Client fragt mit Ticket nach)
   let active = 0;
   for (const r of rooms.values()) if (isActive(r)) active++;
@@ -441,6 +464,7 @@ wss.on('connection', (ws, req) => {
         }
         room.closed = false;
         send(ws, { type: 'welcome', role, code: room.code, joinUrl: joinUrl(room) });
+        for (const n of noticesFor(DATA_DIR, msg)) send(ws, { type: 'notice', ...n });
         broadcastState(room); // Handys sehen: PC ist (wieder) da
         send(ws, { type: 'state', state: room.view() });
         if (room.turn) send(ws, { type: 'turn.started', turn: turnInfo(room) });
@@ -468,6 +492,7 @@ wss.on('connection', (ws, req) => {
       player.connected = true;
       dub.onConnect(room, player);
       send(ws, { type: 'welcome', role, playerId: player.id, token: player.token, name: player.name });
+      for (const n of noticesFor(DATA_DIR, msg)) send(ws, { type: 'notice', ...n });
       broadcastState(room);
       return;
     }

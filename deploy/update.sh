@@ -5,6 +5,7 @@
 #
 #   - no new commit: does nothing
 #   - people are playing: waits (at most MAX_WAIT_MIN), so the restart does not end a running game
+#   - has to restart while people play: warns them first and waits WARN_SEC seconds
 #   - new version does not start: goes back to the previous one and skips that commit
 #
 # Log: journalctl -u voicigame-deploy
@@ -17,6 +18,7 @@ main() {
 	cd "$DIR"
 	BRANCH=${BRANCH:-main}
 	MAX_WAIT_MIN=${MAX_WAIT_MIN:-180}
+	WARN_SEC=${WARN_SEC:-30}
 	STATE=$DIR/deploy/.state
 	mkdir -p "$STATE"
 
@@ -41,6 +43,12 @@ main() {
 		fi
 		echo "Waited $MAX_WAIT_MIN minutes, updating anyway"
 	fi
+	if [ "${busy:-0}" -gt 0 ] && [ "$WARN_SEC" -gt 0 ]; then
+		# Restarting while people play: tell them first, then give them a moment
+		echo "Telling $busy room(s) about the restart, waiting ${WARN_SEC}s"
+		warn "$WARN_SEC"
+		sleep "$WARN_SEC"
+	fi
 	rm -f "$STATE/waiting_since"
 
 	echo "Updating $(short "$old") -> $(short "$new")"
@@ -60,6 +68,11 @@ main() {
 deploy() {
 	git reset --quiet --hard "$1" || return 1
 	docker compose -f deploy/docker-compose.yml up -d --build
+}
+
+# Warn everybody who is playing that the server restarts in $1 seconds.
+warn() {
+	docker exec voicigame wget -qO- -T 3 "http://127.0.0.1:8080/api/restart-soon?s=$1" > /dev/null 2>&1 || true
 }
 
 # Status of the running server; the endpoint only answers requests from inside the container.

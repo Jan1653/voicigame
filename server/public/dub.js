@@ -108,8 +108,8 @@
       const a = document.createElement('audio');
       OGG_OK = !!a.canPlayType && a.canPlayType('audio/ogg; codecs="vorbis"') !== '';
     }
-    const needs = /\.(ogg|opus|flac)$/i.test(decodeURIComponent(u)) && !OGG_OK && dv()?.ffmpeg;
-    return auth(u + (needs ? '?fmt=mp3' : ''));
+    const needs = !u.includes('w=1') && /\.(ogg|opus|flac)$/i.test(decodeURIComponent(u)) && !OGG_OK && dv()?.ffmpeg;
+    return auth(u + (needs ? (u.includes('?') ? '&' : '?') + 'fmt=mp3' : ''));
   }
 
   /* ================= Uhr abgleichen (für gemeinsames Anschauen) ================= */
@@ -128,8 +128,11 @@
       if (d.version !== D.version) { D.pack = null; D.version = d.version; }
       return;
     }
-    if (D.version === d.version && D.orderVersion === d.orderVersion && (D.pack || D.packLoading)) return;
+    // webCan: der PC liefert die fertigen Browser-Dateien. Fällt das weg, sind es wieder die Originale
+    const webCan = !!d.webPack?.can;
+    if (D.version === d.version && D.orderVersion === d.orderVersion && webCan === D.webCan && (D.pack || D.packLoading)) return;
     if (D.packLoading) return;
+    D.webCan = webCan;
     const fresh = D.version !== d.version;
     D.version = d.version;
     D.orderVersion = d.orderVersion;
@@ -200,7 +203,8 @@
   /** Schlüssel einer Pack-Datei; als MP3 umgewandelter Ton (ältere iPhones) bekommt einen eigenen. */
   function cacheKey(u) {
     const mp3 = /\.(ogg|opus|flac)$/i.test(decodeURIComponent(u)) && audioUrl(u).includes('fmt=mp3');
-    return `/vgcache/${D.fp}/${u.split('/').pop()}${mp3 ? '.mp3' : ''}`;
+    const name = u.split('/').pop().split('?')[0];
+    return `/vgcache/${D.fp}${u.includes('w=1') ? '-w' : ''}/${name}${mp3 ? '.mp3' : ''}`;
   }
 
   async function fromCache(urls, v) {
