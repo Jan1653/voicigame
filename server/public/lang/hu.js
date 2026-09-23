@@ -350,4 +350,5 @@ window.VG_LANG.hu = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Indítsd újra a játékot, akkor letölti a frissítést.',
   'Pack wird für den Browser vorbereitet … {} %': 'A csomag készül a böngészőhöz … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'A böngészőcsomag feltöltése … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'A videó ezen a gépen készül … {} %',
 } };

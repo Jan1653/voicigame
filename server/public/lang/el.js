@@ -350,4 +350,5 @@ window.VG_LANG.el = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Ξεκίνα ξανά το παιχνίδι και θα κατεβάσει την ενημέρωση.',
   'Pack wird für den Browser vorbereitet … {} %': 'Το pack ετοιμάζεται για τον browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Το pack για τον browser ανεβαίνει … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Το βίντεο δημιουργείται σε αυτόν τον υπολογιστή … {} %',
 } };

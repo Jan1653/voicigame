@@ -350,4 +350,5 @@ window.VG_LANG.zh = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': '重新启动游戏，它会自己获取更新。',
   'Pack wird für den Browser vorbereitet … {} %': '正在为浏览器准备音频包 … {} %',
   'Browser-Pack wird hochgeladen … {} %': '正在上传浏览器音频包 … {} %',
+  'Video wird auf diesem PC erstellt … {} %': '正在这台电脑上生成视频 … {} %',
 } };

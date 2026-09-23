@@ -350,4 +350,5 @@ window.VG_LANG.hi = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'गेम फिर से शुरू करें, तब अपडेट अपने आप आ जाएगा।',
   'Pack wird für den Browser vorbereitet … {} %': 'पैक ब्राउज़र के लिए तैयार हो रहा है … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'ब्राउज़र पैक अपलोड हो रहा है … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'वीडियो इसी पीसी पर बन रहा है … {} %',
 } };

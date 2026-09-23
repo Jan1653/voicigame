@@ -48,6 +48,11 @@ try {
     $phoneJs = "fake-phone.js"; $phoneMode = $Phone
     if ($Phone -like "dub-*") { $phoneJs = "fake-dub-phone.js"; $phoneMode = $Phone.Substring(4) }
     $phoneName = if ($env:VG_PHONE_NAME) { $env:VG_PHONE_NAME } else { "Testhandy" }   # Name des simulierten Handys
+    # Ohne Figur würfelt der Server die Zeilen zwischen PC und Handy aus, und Prüfungen, die eine
+    # bestimmte Zeile am Handy brauchen, gehen mal so und mal so aus.
+    if ($Plan -eq "dub" -and -not $env:CLAIM) { $env:CLAIM = "Sneakers O'Toole" }
+    # Das Handy fragt am Ende nach dem Video: so wird auch der Weg PC -> Server -> Browser geprüft
+    if ($Plan -eq "dub" -and -not $env:EXPORT) { $env:EXPORT = "1" }
     $phoneProc = Start-Process -FilePath "node" -ArgumentList "`"$tools\$phoneJs`"", "`"$ud\voicigame_test\room.txt`"", "`"$phoneName`"", $phoneMode `
       -WorkingDirectory $tools -PassThru -WindowStyle Hidden `
       -RedirectStandardOutput "$ud\voicigame_test\phone.txt" -RedirectStandardError "$ud\voicigame_test\phone_err.txt"

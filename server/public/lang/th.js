@@ -350,4 +350,5 @@ window.VG_LANG.th = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'เริ่มเกมใหม่ แล้วม็อดจะดาวน์โหลดอัปเดตเอง',
   'Pack wird für den Browser vorbereitet … {} %': 'กำลังเตรียมแพ็กสำหรับเบราว์เซอร์ … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'กำลังอัปโหลดแพ็กสำหรับเบราว์เซอร์ … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'กำลังสร้างวิดีโอบนเครื่องนี้ … {} %',
 } };

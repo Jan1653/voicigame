@@ -350,4 +350,5 @@ window.VG_LANG.nl = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Start het spel opnieuw, dan haalt hij de update op.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pack wordt klaargemaakt voor de browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Browserpack wordt geüpload … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Video wordt op deze pc gemaakt … {} %',
 } };

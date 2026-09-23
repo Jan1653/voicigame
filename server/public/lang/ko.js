@@ -350,4 +350,5 @@ window.VG_LANG.ko = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': '게임을 다시 시작하면 업데이트를 받아옵니다.',
   'Pack wird für den Browser vorbereitet … {} %': '브라우저용 팩 준비 중 … {} %',
   'Browser-Pack wird hochgeladen … {} %': '브라우저 팩 업로드 중 … {} %',
+  'Video wird auf diesem PC erstellt … {} %': '이 PC에서 영상을 만드는 중 … {} %',
 } };

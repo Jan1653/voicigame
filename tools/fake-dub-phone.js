@@ -239,6 +239,8 @@ function onState(s) {
     if (LEAD) {
       wsSend({ type: 'dub.watch' });
       setTimeout(() => finishLead(), 3000);
+    } else if (process.env.EXPORT === '1') {
+      setTimeout(() => finishLead(), 8000);   // erst das Spiel machen lassen
     } else if (rounds >= (Number(process.env.ROUNDS) || 1)) setTimeout(() => { if (!finished) { log('ENDE'); process.exit(0); } }, 20000);
   }
 }

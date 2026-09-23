@@ -127,6 +127,14 @@ func _set_chars(file: String, chars: String) -> void:
 
 
 
+## Kennt der Server diese Figur schon? (Die Zeilen kommen nach und nach an.)
+func _has_char(hook, name: String) -> bool:
+	for c in hook._dub().get("characters", []):
+		if c is Dictionary and str(c.get("name", "")) == name:
+			return true
+	return false
+
+
 ## Das Pack ist beim Server angekommen: entweder alle Originaldateien, oder das fertige Web-Pack
 ## für die Browser (dann bleiben die Originale auf diesem PC, und das ist der bessere Fall).
 func _pack_delivered(hook) -> bool:
@@ -170,6 +178,7 @@ func _dub() -> void:
 		DubHook.upload_error_text(409, "bad_offset"), DubHook.upload_error_text(500, "xyz")]
 	_check("22 Fehlertexte", not str(texts).contains("too_large") and not str(texts).contains("bad_offset"), str(texts))
 	DubHook.test_fail_uploads = 2          # Befund 18: zwei Stücke scheitern
+	DubHook.test_no_local = false
 	DubHook.test_broken_take = "4_otoole2" # Befund 19: diese Aufnahme lässt sich nie laden
 
 	var master: Node = await d._wait_for(func(n): return n.has_method("NewSlide"))
@@ -214,6 +223,11 @@ func _dub() -> void:
 	_check("18 Hochladen", _pack_delivered(hook) and (DubHook.test_fail_uploads == 0 or from_cache),
 		"%s, Web-Pack %s, nach %.1f s, %s" % [hook._upload_state, str(hook._web.get("state", "")), t,
 		"Pack lag schon auf dem Server" if from_cache else "zwei Stücke absichtlich gescheitert und wiederholt"])
+	# Figuren gibt es erst, wenn der Server die Beschreibungen gelesen hat
+	t = 0.0
+	while t < 20.0 and not _has_char(hook, "Brian"):
+		await _wait(0.5)
+		t += 0.5
 	hook._claim_local("Brian")
 	await _wait(3.0)
 	await _start_when_ready(hook)
@@ -296,6 +310,23 @@ func _dub() -> void:
 	hook.request_watch()
 	await _wait(4.5)
 	await d._shot("anschauen")
+	# Zuerst auf diesem PC (ffmpeg), der Server soll dafür gar nichts tun
+	hook.request_export()
+	t = 0.0
+	while hook._export_state != "done" and hook._export_state != "error" and t < 180.0:
+		await _wait(1.0)
+		t += 1.0
+	var own_file: String = hook._export_file
+	var own_size := FileAccess.open(own_file, FileAccess.READ).get_length() if FileAccess.file_exists(own_file) else 0
+	var srv = hook._dub().get("export")
+	var srv_status := str(srv.get("status", "")) if srv is Dictionary else ""
+	var by_host: bool = bool(srv.get("byHost", false)) if srv is Dictionary else false
+	_check("24 Export auf diesem PC", hook._export_state == "done" and own_size > 100000 and (by_host or srv_status != "done"),
+		"%s, %d Bytes, Server: %s" % [own_file.get_file(), own_size,
+		"wartet auf uns" if by_host else (srv_status if srv_status != "" else "nichts zu tun")])
+
+	# Dann der Weg über den Server (Befund 23: erster Download geht absichtlich schief)
+	DubHook.test_no_local = true
 	hook.test_export_fail = true
 	hook.request_export()
 	t = 0.0
@@ -303,7 +334,12 @@ func _dub() -> void:
 		await _wait(1.0)
 		t += 1.0
 	var bad_file: String = hook._export_file
-	_check("23 Export-Fehler", hook._export_state == "error" and not FileAccess.file_exists(bad_file) and not FileAccess.file_exists(bad_file + ".part"),
+	# Das Video von diesem PC (Prüfung 24) heißt genauso und darf bleiben: kaputt wäre nur eine
+	# angefangene Datei oder eine mit anderer Größe.
+	var still_good := true
+	if FileAccess.file_exists(bad_file):
+		still_good = FileAccess.open(bad_file, FileAccess.READ).get_length() == own_size
+	_check("23 Export-Fehler", hook._export_state == "error" and still_good and not FileAccess.file_exists(bad_file + ".part"),
 		"kein kaputtes Video in %s" % bad_file.get_base_dir())
 	hook.request_export()
 	t = 0.0
@@ -323,11 +359,11 @@ func _dub() -> void:
 	dm = await _enter_dub(vg)
 	hook = vg.dub_hook
 	t = 0.0
-	while hook._upload_state != "done" and t < 60.0:
+	while not _pack_delivered(hook) and t < 60.0:
 		await _wait(0.5)
 		t += 0.5
 	dv = hook._dub()
-	_check("3 zweite Runde", hook._upload_state == "done" and str(dv.get("phase", "")) == "hub",
+	_check("3 zweite Runde", _pack_delivered(hook) and str(dv.get("phase", "")) == "hub",
 		"Pack %s nach %.1f s, Server %s" % [hook._upload_state, t, dv.get("phase", "")])
 	# Befund 13: „Ich am PC“ doppelt geklickt
 	hook._claim_local("Brian", true)

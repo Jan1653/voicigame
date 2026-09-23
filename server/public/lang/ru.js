@@ -350,4 +350,5 @@ window.VG_LANG.ru = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Перезапусти игру, и она загрузит обновление.',
   'Pack wird für den Browser vorbereitet … {} %': 'Пак готовится для браузера … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Пак для браузера загружается … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Видео создаётся на этом ПК … {} %',
 } };

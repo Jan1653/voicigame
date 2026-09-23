@@ -350,4 +350,5 @@ window.VG_LANG.id = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Mulai ulang game, nanti update diambil sendiri.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pack disiapkan untuk browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack browser sedang diunggah … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Video dibuat di PC ini … {} %',
 } };

@@ -350,4 +350,5 @@ window.VG_LANG.vi = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Khởi động lại game, nó sẽ tự tải bản cập nhật.',
   'Pack wird für den Browser vorbereitet … {} %': 'Đang chuẩn bị pack cho trình duyệt … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Đang tải pack cho trình duyệt lên … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Video đang được tạo trên máy này … {} %',
 } };

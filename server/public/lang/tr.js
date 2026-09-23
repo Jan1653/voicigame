@@ -350,4 +350,5 @@ window.VG_LANG.tr = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Oyunu yeniden başlat, güncellemeyi kendisi alır.',
   'Pack wird für den Browser vorbereitet … {} %': 'Paket tarayıcı için hazırlanıyor … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Tarayıcı paketi yükleniyor … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Video bu bilgisayarda oluşturuluyor … {} %',
 } };

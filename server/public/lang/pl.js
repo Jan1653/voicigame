@@ -350,4 +350,5 @@ window.VG_LANG.pl = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Uruchom grę ponownie, wtedy pobierze aktualizację.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pack jest przygotowywany dla przeglądarki … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack dla przeglądarki jest wysyłany … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Wideo powstaje na tym komputerze … {} %',
 } };

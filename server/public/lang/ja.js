@@ -350,4 +350,5 @@ window.VG_LANG.ja = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'ゲームを再起動すると更新を取得します。',
   'Pack wird für den Browser vorbereitet … {} %': 'パックをブラウザ用に準備中 … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'ブラウザ用パックをアップロード中 … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'このPCで動画を作成中 … {} %',
 } };

@@ -350,4 +350,5 @@ window.VG_LANG.ro = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Repornește jocul și își ia singur actualizarea.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pachetul se pregătește pentru browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pachetul pentru browser se încarcă … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Videoclipul se creează pe acest PC … {} %',
 } };

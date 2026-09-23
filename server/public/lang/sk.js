@@ -350,4 +350,5 @@ window.VG_LANG.sk = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Reštartuj hru, potom si aktualizáciu stiahne.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pack sa pripravuje pre prehliadač … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack pre prehliadač sa nahráva … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Video sa vytvára na tomto počítači … {} %',
 } };

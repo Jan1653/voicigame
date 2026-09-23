@@ -350,4 +350,5 @@ window.VG_LANG.cs = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Restartuj hru, pak si aktualizaci stáhne.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pack se připravuje pro prohlížeč … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack pro prohlížeč se nahrává … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Video se vytváří na tomto počítači … {} %',
 } };

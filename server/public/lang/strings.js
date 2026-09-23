@@ -352,4 +352,5 @@ window.VG_STRINGS = [
   ['Starte das Spiel neu, dann holt er sich das Update.', 'Restart the game, then it fetches the update.', 'Reinicia el juego y descargará la actualización.', 'Redémarre le jeu, il récupérera la mise à jour.', 'Reinicie o jogo e ele vai baixar a atualização.', 'Riavvia il gioco e scaricherà l\'aggiornamento.'],
   ['Pack wird für den Browser vorbereitet … {} %', 'Getting the pack ready for the browser … {} %', 'Preparando el pack para el navegador … {} %', 'Préparation du pack pour le navigateur … {} %', 'Preparando o pack para o navegador … {} %', 'Preparazione del pack per il browser … {} %'],
   ['Browser-Pack wird hochgeladen … {} %', 'Uploading the browser pack … {} %', 'Subiendo el pack para el navegador … {} %', 'Envoi du pack pour le navigateur … {} %', 'Enviando o pack do navegador … {} %', 'Caricamento del pack per il browser … {} %'],
+  ['Video wird auf diesem PC erstellt … {} %', 'Making the video on this PC … {} %', 'Creando el vídeo en este PC … {} %', 'Création de la vidéo sur ce PC … {} %', 'Criando o vídeo neste PC … {} %', 'Il video viene creato su questo PC … {} %'],
 ];

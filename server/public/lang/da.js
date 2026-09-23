@@ -350,4 +350,5 @@ window.VG_LANG.da = { strings: {
   'Starte das Spiel neu, dann holt er sich das Update.': 'Genstart spillet, så henter det opdateringen.',
   'Pack wird für den Browser vorbereitet … {} %': 'Pakken gøres klar til browseren … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Browserpakken uploades … {} %',
+  'Video wird auf diesem PC erstellt … {} %': 'Videoen laves på denne computer … {} %',
 } };

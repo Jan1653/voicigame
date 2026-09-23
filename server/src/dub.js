@@ -40,10 +40,12 @@ function folderBytes(dir) {
   return n;
 }
 const MAX_TAKE = (Number(process.env.DUB_MAX_TAKE_MB) || 25) * MB;
+const MAX_EXPORT = (Number(process.env.DUB_MAX_EXPORT_MB) || 600) * MB;   // fertiges Video vom PC
 const PAUSE_GRACE_MS = 20000;
 const OFFER_MS = 60000;        // so lange steht ein Angebot, eine Zeile abzugeben
 const WANT_GRACE_MS = 5000;    // so lange darf jemand nach dem Beitreten melden, dass er das Pack schon hat
 const WATCH_LEAD_MS = 2500;
+const HOST_EXPORT_MS = 4 * 60 * 1000;   // so lange bekommt der PC Zeit für das Video
 const SR = 44100;
 const rid = (n = 6) => crypto.randomBytes(n).toString('hex');
 const key = (clipId, pid) => `${clipId}\n${pid}`;
@@ -116,6 +118,7 @@ export class DubSession {
     this.wantTimer = null;
     this.exportPending = false;        // Export gewünscht, das Pack ist aber noch nicht ganz auf dem Server
     this.exportDropTimer = null;
+    this.hostExportTimer = null;       // so lange warten wir auf das Video vom PC
     this.cached = false;               // Pack kam aus dem Speicher des Servers, es wurde nichts hochgeladen
     this.web = this.emptyWeb();        // Web-Pack (.vgpack) vom PC, siehe vgpack.js
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
@@ -130,7 +133,7 @@ export class DubSession {
     this.chat = [];
     this.gameScores = new Map();       // clipId -> 0..100, vom Spiel berechnet
     this.gameDone = false;             // Spiel am PC hat die letzte Zeile verarbeitet (erst dann gemeinsam anschauen)
-    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null };
+    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null, byHost: false };
     this.onChange = () => {};
     this.onEvent = () => {};
   }
@@ -1017,7 +1020,7 @@ export class DubSession {
   dropExport() {
     const f = this.exportJob.file;
     if (f) fs.rmSync(f, { force: true });
-    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null };
+    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null, byHost: false };
   }
 
   clearTakes() {
@@ -1030,7 +1033,7 @@ export class DubSession {
     this.gameScores.clear();
     this.gameDone = false;
     this.turns = [];
-    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null };
+    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null, byHost: false };
   }
 
   /** Aufnahme annehmen. -> Fehlertext oder null */
@@ -1126,7 +1129,8 @@ export class DubSession {
       chat: this.chat.slice(-30),
       takes: [...this.takes.values()].map((x) => ({ clipId: x.clipId, playerId: x.playerId, name: x.name, score: x.score, v: x.at })),
       gameScores: Object.fromEntries(this.gameScores),
-      export: { status: this.exportJob.status, pct: Math.round(this.exportJob.pct * 100) / 100, error: this.exportJob.error, name: this.exportJob.name },
+      export: { status: this.exportJob.status, pct: Math.round(this.exportJob.pct * 100) / 100, error: this.exportJob.error,
+        name: this.exportJob.name, byHost: this.exportJob.byHost },
       ffmpeg: !!findFfmpeg(),
       waitGame: this.waitGame(),
       me: forPid ? this.meView(forPid) : null,
@@ -1161,6 +1165,44 @@ export class DubSession {
       }
     }
     return out;
+  }
+
+  /** Export anstoßen. Hat der PC mit Mod ffmpeg, macht er das Video: der Server spart sich die
+   *  teuerste Arbeit überhaupt. Kommt von dort nichts, springt der Server nach HOST_EXPORT_MS ein. */
+  askExport() {
+    if (['queued', 'running'].includes(this.exportJob.status)) return;
+    if (this.web.can && this.room.hosts.size > 0) {
+      this.exportJob = { status: 'queued', pct: 0, error: null, file: null, name: null, byHost: true };
+      clearTimeout(this.hostExportTimer);
+      this.hostExportTimer = setTimeout(() => {
+        if (this.exportJob.byHost && this.exportJob.status !== 'done') {
+          console.warn('Video vom PC blieb aus, der Server macht es');
+          this.serverExport();
+        }
+      }, HOST_EXPORT_MS);
+      return this.onChange();
+    }
+    return this.runExport();
+  }
+
+  /** Doch auf dem Server rechnen: der wartende Auftrag wird dafür zurückgesetzt. */
+  serverExport() {
+    clearTimeout(this.hostExportTimer);
+    this.exportJob = { status: 'idle', pct: 0, error: null, file: null, name: null, byHost: false };
+    return this.runExport().catch((e) => {
+      this.exportJob = { status: 'error', pct: 0, error: e.message, file: null, name: null, byHost: false };
+      this.onChange();
+    });
+  }
+
+  /** Fertiges Video vom PC übernehmen. */
+  takeExport(file, name) {
+    clearTimeout(this.hostExportTimer);
+    storageAddFile(file);
+    this.exportJob = { status: 'done', pct: 1, error: null, file, name: name || `${slug(this.pack?.title)} ${stamp()}.mp4`, byHost: true };
+    countStat('exports');
+    countStat('exports_host');
+    this.onChange();
   }
 
   async runExport() {
@@ -1600,6 +1642,33 @@ export function installDub(app, ctx) {
     }
   });
 
+  // Fertiges Video vom PC mit Mod (er hat es selbst gerechnet)
+  r.put('/:code/dub/export', async (req, res) => {
+    const a = auth(req, res, { upload: true });
+    if (!a.host) return res.status(403).json({ error: 'forbidden' });
+    const d = a.dub;
+    const out = path.join(d.dir, 'work', 'export.mp4');
+    const offset = Math.max(0, Math.floor(Number(req.query.offset) || 0));
+    const total = Math.max(0, Math.floor(Number(req.query.size) || 0));
+    if (!offset) fs.rmSync(out, { force: true });
+    const have = fs.existsSync(out) ? fs.statSync(out).size : 0;
+    if (offset !== have) return res.status(409).json({ error: 'bad_offset', have });
+    const budget = Math.min(MAX_EXPORT - have, storageLeft(dataDirOf(a.room)));
+    if (budget <= 0) return res.status(413).json({ error: 'too_large' });
+    try {
+      const bytes = await receive(req, out, have + budget, offset);
+      storageAdd(bytes - have);
+      // Erst wenn alles da ist, gilt das Video als fertig
+      if (total && bytes < total) return res.json({ ok: true, bytes });
+      d.takeExport(out, safeName(req.query.name));
+      broadcastState(a.room);
+      res.json({ ok: true, bytes });
+    } catch (e) {
+      fs.rmSync(out, { force: true });
+      res.status(e.status || 500).json({ error: e.message });
+    }
+  });
+
   // Der PC schafft kein Web-Pack (kein ffmpeg, Umwandlung fehlgeschlagen): ab jetzt wieder Originaldateien
   r.post('/:code/dub/pack/web/off', (req, res) => {
     const a = auth(req, res, { upload: true });
@@ -1789,6 +1858,10 @@ export function installDub(app, ctx) {
         }
         return r.ok ? true : 'start:' + r.reason;
       }
+      case 'dub.export.server':
+        // Der PC kann das Video doch nicht selbst machen: nicht weiter warten
+        if (d.exportJob.byHost) d.serverExport();
+        return true;
       case 'dub.skip':
         d.skipCurrent(msg.clipId ? String(msg.clipId) : null);
         return true;
@@ -1808,19 +1881,25 @@ export function installDub(app, ctx) {
       case 'dub.watch.stop':
         d.stopWatch();
         return true;
-      case 'dub.export':
+      case 'dub.export': {
         if (d.phase !== 'results') return 'Exportieren geht erst am Ende.';
+        // Der PC mit Mod hat das Pack und ffmpeg: er macht das Video, der Server wartet nur
+        if (d.web.can && room.hosts.size > 0) {
+          d.askExport();
+          return true;
+        }
         if (d.plan && !d.plan.complete) {
           // Das Pack liegt noch auf dem PC: erst hochladen lassen, finishStream startet den Export dann
           d.exportPending = true;
-          d.exportJob = { status: 'waiting', pct: 0, error: null, file: null, name: null };
+          d.exportJob = { status: 'waiting', pct: 0, error: null, file: null, name: null, byHost: false };
           return true;
         }
         d.runExport().catch((e) => {
-          d.exportJob = { status: 'error', pct: 0, error: e.message, file: null, name: null };
+          d.exportJob = { status: 'error', pct: 0, error: e.message, file: null, name: null, byHost: false };
           broadcastState(room);
         });
         return true;
+      }
       case 'dub.kick': {
         const p = room.players.get(String(msg.playerId));
         if (p?.kind === 'phone' && p.id !== from) {

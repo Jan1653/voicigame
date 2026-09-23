@@ -306,7 +306,8 @@ export function report(all, days, { json = false, color = true } = {}) {
     ['Raum offen', 'room_min', 'min'], ['Jemand im Raum', 'player_min', 'min'],
     ['Spieler je Raum', 'room_players', 'n'], ['Runden je Gameshow', 'show_rounds', 'n'],
     ['Zeilen je Dub-Runde', 'dub_lines', 'n'], ['Zeilen je Pack', 'pack_lines', 'n'],
-    ['Größe der Packs', 'pack_mb', 'mb'], ['Länge des Dub-Videos', 'video_min', 'min'],
+    ['Größe der Packs', 'pack_mb', 'mb'], ['Größe der Browser-Packs', 'webpack_mb', 'mb'],
+    ['Länge des Dub-Videos', 'video_min', 'min'],
     ['Länge einer Aufnahme', 'take_s', 's'], ['Aufnahme unterwegs', 'upload_s', 's'],
   ].filter(([, k]) => dist(k));
   if (blocks.length) {
@@ -319,7 +320,9 @@ export function report(all, days, { json = false, color = true } = {}) {
   kvn(out, 'Aufnahmen', sum('takes'), `${size(sum('take_mb'))}, aus ${pl(sum('rounds'), 'Gameshow-Runde', 'Gameshow-Runden')} und ${pl(sum('lines'), 'Dub-Zeile', 'Dub-Zeilen')}`);
   kvn(out, 'Clips vom Spiel', sum('clips'), size(sum('clip_mb')));
   kvn(out, 'Dub-Packs', sum('packs'), size(dist('pack_mb')?.sum || 0));
-  kvn(out, 'Videos exportiert', sum('exports'), `${int(sum('export_fail'))} fehlgeschlagen, ${int(sum('zips'))}× Aufnahmen als ZIP`);
+  kvn(out, 'Browser-Packs vom PC', dist('webpack_mb')?.n || 0, `${size(dist('webpack_mb')?.sum || 0)}, ${int(sum('webpack_cache_hits'))}× aus dem Speicher, dafür nichts umgewandelt`);
+  kvn(out, 'Packs aus dem Speicher', sum('pack_cache_hits'), `${int(sum('pack_cache_drops'))} wieder gelöscht`);
+  kvn(out, 'Videos exportiert', sum('exports'), `${int(sum('exports_host'))} davon auf dem PC gerechnet, ${int(sum('export_fail'))} fehlgeschlagen, ${int(sum('zips'))}× Aufnahmen als ZIP`);
   kvn(out, 'Live-Bild', sum('watch'), 'mal eingeschaltet');
   kvn(out, 'Mod-Updater', sum('mod_check'), `Anfragen, ${int(sum('mod_file'))} Dateien geladen`);
 
