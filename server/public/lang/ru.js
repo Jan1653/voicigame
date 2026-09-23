@@ -351,4 +351,6 @@ window.VG_LANG.ru = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Пак готовится для браузера … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Пак для браузера загружается … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Видео создаётся на этом ПК … {} %',
+  'Pack wird gesucht …': 'Ищем пак …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Сервер уже знает этот пак, загружать ничего не пришлось.',
 } };

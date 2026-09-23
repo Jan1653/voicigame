@@ -351,4 +351,6 @@ window.VG_LANG.zh = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': '正在为浏览器准备音频包 … {} %',
   'Browser-Pack wird hochgeladen … {} %': '正在上传浏览器音频包 … {} %',
   'Video wird auf diesem PC erstellt … {} %': '正在这台电脑上生成视频 … {} %',
+  'Pack wird gesucht …': '正在查找音频包 …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': '服务器已经有这个音频包了，不用上传。',
 } };

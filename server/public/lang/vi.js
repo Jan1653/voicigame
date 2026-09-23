@@ -351,4 +351,6 @@ window.VG_LANG.vi = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Đang chuẩn bị pack cho trình duyệt … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Đang tải pack cho trình duyệt lên … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video đang được tạo trên máy này … {} %',
+  'Pack wird gesucht …': 'Đang tìm pack …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Máy chủ đã biết pack này rồi, không cần tải lên gì cả.',
 } };

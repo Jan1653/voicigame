@@ -351,4 +351,6 @@ window.VG_LANG.hu = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'A csomag készül a böngészőhöz … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'A böngészőcsomag feltöltése … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'A videó ezen a gépen készül … {} %',
+  'Pack wird gesucht …': 'Csomag keresése …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'A szerver már ismeri ezt a csomagot, semmit sem kellett feltölteni.',
 } };

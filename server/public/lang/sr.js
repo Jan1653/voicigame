@@ -351,4 +351,6 @@ window.VG_LANG.sr = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pack se priprema za pregledač … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack za pregledač se šalje … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video se pravi na ovom računaru … {} %',
+  'Pack wird gesucht …': 'Tražim pack …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Server već zna ovaj pack, ništa nije trebalo da se šalje.',
 } };

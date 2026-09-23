@@ -351,4 +351,6 @@ window.VG_LANG.ko = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': '브라우저용 팩 준비 중 … {} %',
   'Browser-Pack wird hochgeladen … {} %': '브라우저 팩 업로드 중 … {} %',
   'Video wird auf diesem PC erstellt … {} %': '이 PC에서 영상을 만드는 중 … {} %',
+  'Pack wird gesucht …': '팩을 찾는 중 …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': '서버가 이 팩을 이미 알고 있어서 업로드할 필요가 없었습니다.',
 } };

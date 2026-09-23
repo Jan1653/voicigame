@@ -351,4 +351,6 @@ window.VG_LANG.sv = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Packet görs klart för webbläsaren … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Webbläsarpacket laddas upp … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Videon skapas på den här datorn … {} %',
+  'Pack wird gesucht …': 'Letar efter paketet …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Servern känner redan till paketet, inget behövde laddas upp.',
 } };

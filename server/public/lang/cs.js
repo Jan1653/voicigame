@@ -351,4 +351,6 @@ window.VG_LANG.cs = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pack se připravuje pro prohlížeč … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack pro prohlížeč se nahrává … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video se vytváří na tomto počítači … {} %',
+  'Pack wird gesucht …': 'Hledání packu …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Server tento pack už zná, nemuselo se nic nahrávat.',
 } };

@@ -351,4 +351,6 @@ window.VG_LANG.ja = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'パックをブラウザ用に準備中 … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'ブラウザ用パックをアップロード中 … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'このPCで動画を作成中 … {} %',
+  'Pack wird gesucht …': 'パックを探しています …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'サーバーはこのパックをすでに知っています。アップロードは不要でした。',
 } };

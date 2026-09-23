@@ -11,15 +11,17 @@ services:
     restart: unless-stopped
     environment:
       PUBLIC_URL: ${PUBLIC_URL:-https://voicigame.duckdns.org}
-      MAX_STORAGE_GB: ${MAX_STORAGE_GB:-3}
+      MAX_STORAGE_GB: ${MAX_STORAGE_GB:-10}
+      # Packs, die der Server schon kennt: je mehr hier passen, desto seltener lädt jemand eins hoch
+      PACK_CACHE_GB: ${PACK_CACHE_GB:-6}
       MAX_ROOMS: ${MAX_ROOMS:-150}
       MAX_ACTIVE_ROOMS: ${MAX_ACTIVE_ROOMS:-60}
       OVERLOAD_LAG_MS: ${OVERLOAD_LAG_MS:-250}
       ROOMS_PER_IP: ${ROOMS_PER_IP:-8}
       MAX_PLAYERS_PER_ROOM: ${MAX_PLAYERS_PER_ROOM:-16}
-      DUB_MAX_PACK_MB: ${DUB_MAX_PACK_MB:-800}
+      DUB_MAX_PACK_MB: ${DUB_MAX_PACK_MB:-1024}
       DUB_MAX_VIDEO_MIN: ${DUB_MAX_VIDEO_MIN:-20}
-      FFMPEG_THREADS: ${FFMPEG_THREADS:-1}
+      FFMPEG_THREADS: ${FFMPEG_THREADS:-2}
     # Keep the other sites on the same machine responsive
     mem_limit: ${MEM_LIMIT:-800m}
     cpus: ${CPUS:-1.0}

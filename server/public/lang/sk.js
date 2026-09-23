@@ -351,4 +351,6 @@ window.VG_LANG.sk = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pack sa pripravuje pre prehliadač … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack pre prehliadač sa nahráva … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video sa vytvára na tomto počítači … {} %',
+  'Pack wird gesucht …': 'Hľadanie packu …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Server tento pack už pozná, nemuselo sa nič nahrávať.',
 } };

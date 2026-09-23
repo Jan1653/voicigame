@@ -351,4 +351,6 @@ window.VG_LANG.nl = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pack wordt klaargemaakt voor de browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Browserpack wordt geüpload … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video wordt op deze pc gemaakt … {} %',
+  'Pack wird gesucht …': 'Pack wordt gezocht …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'De server kent dit pack al, er hoefde niets geüpload te worden.',
 } };

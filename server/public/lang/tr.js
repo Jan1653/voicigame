@@ -351,4 +351,6 @@ window.VG_LANG.tr = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Paket tarayıcı için hazırlanıyor … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Tarayıcı paketi yükleniyor … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video bu bilgisayarda oluşturuluyor … {} %',
+  'Pack wird gesucht …': 'Paket aranıyor …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Sunucu bu paketi zaten biliyor, hiçbir şey yüklenmedi.',
 } };

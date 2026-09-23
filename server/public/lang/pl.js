@@ -351,4 +351,6 @@ window.VG_LANG.pl = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pack jest przygotowywany dla przeglądarki … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack dla przeglądarki jest wysyłany … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Wideo powstaje na tym komputerze … {} %',
+  'Pack wird gesucht …': 'Szukanie packa …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Serwer już zna ten pack, nic nie trzeba było wysyłać.',
 } };

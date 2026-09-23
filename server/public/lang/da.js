@@ -351,4 +351,6 @@ window.VG_LANG.da = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pakken gøres klar til browseren … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Browserpakken uploades … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Videoen laves på denne computer … {} %',
+  'Pack wird gesucht …': 'Leder efter pakken …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Serveren kender allerede pakken, der skulle ikke uploades noget.',
 } };

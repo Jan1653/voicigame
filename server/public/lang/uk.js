@@ -351,4 +351,6 @@ window.VG_LANG.uk = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Пак готується для браузера … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Пак для браузера завантажується … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Відео створюється на цьому ПК … {} %',
+  'Pack wird gesucht …': 'Шукаємо пак …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Сервер уже знає цей пак, завантажувати нічого не довелося.',
 } };

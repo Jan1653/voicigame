@@ -351,4 +351,6 @@ window.VG_LANG.th = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'กำลังเตรียมแพ็กสำหรับเบราว์เซอร์ … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'กำลังอัปโหลดแพ็กสำหรับเบราว์เซอร์ … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'กำลังสร้างวิดีโอบนเครื่องนี้ … {} %',
+  'Pack wird gesucht …': 'กำลังค้นหาแพ็ก …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'เซิร์ฟเวอร์รู้จักแพ็กนี้อยู่แล้ว ไม่ต้องอัปโหลดอะไรเลย',
 } };

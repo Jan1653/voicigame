@@ -351,4 +351,6 @@ window.VG_LANG.id = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pack disiapkan untuk browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pack browser sedang diunggah … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Video dibuat di PC ini … {} %',
+  'Pack wird gesucht …': 'Mencari pack …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Server sudah mengenal pack ini, tidak ada yang perlu diunggah.',
 } };

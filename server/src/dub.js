@@ -120,6 +120,7 @@ export class DubSession {
     this.exportDropTimer = null;
     this.hostExportTimer = null;       // so lange warten wir auf das Video vom PC
     this.cached = false;               // Pack kam aus dem Speicher des Servers, es wurde nichts hochgeladen
+    this.knownVideo = null;            // schon umgewandeltes Video aus dem Pack-Speicher
     this.web = this.emptyWeb();        // Web-Pack (.vgpack) vom PC, siehe vgpack.js
     this.turns = [];                   // [{clipId, index, recorders:[pid]}]
     this.turnIndex = -1;
@@ -175,6 +176,7 @@ export class DubSession {
   beginUpload(plan = null) {
     if (this.phase !== 'hub') throw new Error('Das Pack kann nur in der Lobby gewechselt werden.');
     this.plan = null;
+    this.knownVideo = null;
     this.waitClip = null;
     this.upBytes = 0;
     clearTimeout(this.rescanTimer);
@@ -533,6 +535,23 @@ export class DubSession {
     this.onChange();
   }
 
+  /**
+   * Kennt der Server dieses Pack schon (gleiche Dateien und Größen)? Dann kommt es aus dem Speicher
+   * und es wird nichts hochgeladen und nichts umgewandelt. files: [{name, size}] wie sie ankommen würden.
+   * -> true, wenn das Pack steht.
+   */
+  async takeKnown(files, opts = {}) {
+    const dataDir = dataDirOf(this.room);
+    const info = fileInfoOf(files);
+    if (!info.fp || !packCache.has(dataDir, info.fp, info.files)) return false;
+    this.beginUpload(null);
+    const got = packCache.take(dataDir, info.fp, this.stagingDir(), path.join(this.dir, 'work'));
+    this.knownVideo = got.video || null;
+    await this.commit(opts);
+    this.cached = true;
+    return true;
+  }
+
   /** Gleiches Pack noch einmal (z. B. neue Runde im Spiel): nur Reihenfolge und übernommene Zeilen neu, Dateien bleiben. */
   reuse(opts) {
     if (!this.pack || this.packStatus.status !== 'ready') throw new Error('Es ist noch kein Pack da.');
@@ -589,6 +608,19 @@ export class DubSession {
   async prepareVideo() {
     // Liegt es fertig im Web-Pack, ist nichts zu tun
     if (this.pack?.video && this.webHas(this.pack.video)) return this.maybePrepareVideo();
+    // Aus dem Pack-Speicher: einmal umgewandelt reicht für immer
+    if (this.knownVideo && fs.existsSync(this.knownVideo)) {
+      Object.assign(this.video, { status: 'ready', pct: 1, file: this.knownVideo, part: null, mime: 'video/mp4', h264: true });
+      if (!this.video.duration) {
+        probe(this.knownVideo).then((i) => {
+          if (!i) return;
+          this.video.duration = i.duration || 0;
+          this.video.height = i.video?.height || 0;
+          this.onChange();
+        }).catch(() => {});
+      }
+      return this.onChange();
+    }
     if (!this.needsWebVideo()) {
       // Niemand im Browser: das Video bleibt, wie es ist. Kommt jemand dazu, läuft maybePrepareVideo()
       this.video = { status: 'none', pct: 0, file: null, mime: null, duration: this.video.duration, height: 0, codec: null, h264: false };
@@ -1675,6 +1707,21 @@ export function installDub(app, ctx) {
     if (!a) return;
     a.dub.webOff();
     res.json({ ok: true });
+  });
+
+  // Kennt der Server dieses Pack schon? Dann steht es sofort und es wird nichts hochgeladen.
+  r.post('/:code/dub/pack/known', express.json({ limit: '2mb' }), async (req, res) => {
+    const a = auth(req, res, { upload: true });
+    if (!a) return;
+    const files = Array.isArray(req.body?.files) ? req.body.files.slice(0, 5000) : [];
+    try {
+      const have = await a.dub.takeKnown(files.map((f) => ({ name: safeName(f?.name), size: Number(f?.size) || 0 }))
+        .filter((f) => f.name), { orderMode: req.body?.orderMode });
+      broadcastState(a.room);
+      res.json({ have });
+    } catch (e) {
+      res.status(409).json({ error: e.message, have: false });
+    }
   });
 
   r.put('/:code/dub/pack/zip', async (req, res) => {

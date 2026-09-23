@@ -351,4 +351,6 @@ window.VG_LANG.ro = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Pachetul se pregătește pentru browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Pachetul pentru browser se încarcă … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Videoclipul se creează pe acest PC … {} %',
+  'Pack wird gesucht …': 'Se caută pachetul …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Serverul cunoaște deja acest pachet, nu a trebuit încărcat nimic.',
 } };

@@ -1494,9 +1494,129 @@ void main() {
 
   const mb = (n) => (n / 1048576).toFixed(n > 1048576 * 10 ? 0 : 1);
 
+
+  /* ---------- Kennt der Server das Pack schon? ----------
+   * Packs sind groß (im Schnitt gut 80 MB). Der Server merkt sie sich am Fingerabdruck aus Namen und
+   * Größen. Bevor hier etwas hochgeladen wird, fragen wir also erst: kennst du das? Dann steht das Pack
+   * sofort, ohne ein einziges Byte. Klappt die Frage nicht, wird ganz normal hochgeladen. */
+
+  const PACK_AUDIO = ['ogg', 'wav', 'mp3', 'flac', 'm4a', 'opus', 'aac'];
+
+  /** Wie safeName auf dem Server: nur der Dateiname, ohne Steuerzeichen. */
+  function safeName(name) {
+    const n = String(name || '').replace(/\\/g, '/').split('/').pop()
+      .replace(/[\u0000-\u001f<>:"|?*]/g, '_').trim();
+    if (!n || n === '.' || n === '..') return null;
+    return n.slice(0, 180);
+  }
+
+  /** Inhaltsverzeichnis einer ZIP-Datei lesen (nur das Ende der Datei), ohne sie zu entpacken. */
+  async function zipList(file) {
+    const tailLen = Math.min(file.size, 65557 + 20);
+    const tailBuf = await file.slice(file.size - tailLen).arrayBuffer();
+    const tail = new DataView(tailBuf);
+    let eocd = -1;
+    for (let i = tailLen - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) return null;
+    let count = tail.getUint16(eocd + 10, true);
+    let cdSize = tail.getUint32(eocd + 12, true);
+    let cdOff = tail.getUint32(eocd + 16, true);
+    if (cdOff === 0xffffffff || count === 0xffff) {
+      const loc = eocd - 20;
+      if (loc >= 0 && tail.getUint32(loc, true) === 0x07064b50) {
+        const z64 = Number(tail.getBigUint64(loc + 8, true));
+        const rec = new DataView(await file.slice(z64, z64 + 56).arrayBuffer());
+        if (rec.getUint32(0, true) === 0x06064b50) {
+          count = Number(rec.getBigUint64(32, true));
+          cdSize = Number(rec.getBigUint64(40, true));
+          cdOff = Number(rec.getBigUint64(48, true));
+        }
+      }
+    }
+    if (!cdSize || cdSize > 64 * 1048576 || cdOff + cdSize > file.size) return null;
+    const buf = await file.slice(cdOff, cdOff + cdSize).arrayBuffer();
+    const cd = new DataView(buf);
+    const bytes = new Uint8Array(buf);
+    const out = [];
+    let p = 0;
+    for (let i = 0; i < count && p + 46 <= cd.byteLength; i++) {
+      if (cd.getUint32(p, true) !== 0x02014b50) break;
+      const flags = cd.getUint16(p + 8, true);
+      let size = cd.getUint32(p + 24, true);
+      const nlen = cd.getUint16(p + 28, true);
+      const xlen = cd.getUint16(p + 30, true);
+      const clen = cd.getUint16(p + 32, true);
+      const raw = bytes.subarray(p + 46, p + 46 + nlen);
+      const name = new TextDecoder(flags & 0x800 ? 'utf-8' : 'windows-1252').decode(raw).replace(/\\/g, '/');
+      let x = p + 46 + nlen;
+      const xend = x + xlen;
+      while (x + 4 <= xend) {
+        const id = cd.getUint16(x, true);
+        const len = cd.getUint16(x + 2, true);
+        if (id === 1 && size === 0xffffffff) size = Number(cd.getBigUint64(x + 4, true));
+        x += 4 + len;
+      }
+      out.push({ name, size, dir: name.endsWith('/') });
+      p = xend + clen;
+    }
+    return out;
+  }
+
+  /** Aus dem ZIP-Verzeichnis die Dateien des Packs, genau wie der Server sie entpacken würde. */
+  function packFilesOfZip(entries) {
+    const dirOf = (n) => (n.includes('/') ? n.slice(0, n.lastIndexOf('/')) : '.');
+    const baseOf = (n) => n.slice(n.lastIndexOf('/') + 1);
+    const dirs = new Map();
+    for (const e of entries) {
+      if (e.dir || e.name.split('/').includes('__MACOSX')) continue;
+      const f = baseOf(e.name).toLowerCase();
+      const st = dirs.get(dirOf(e.name)) || { video: 0, audio: 0, ini: 0 };
+      if (/^dub_video\./.test(f)) st.video++;
+      if (PACK_AUDIO.includes(f.slice(f.lastIndexOf('.') + 1)) && !f.startsWith('_')) st.audio++;
+      if (f.endsWith('.ini') || f.endsWith('.txt')) st.ini++;
+      dirs.set(dirOf(e.name), st);
+    }
+    let best = null;
+    let bestScore = -1;
+    for (const [d, st] of dirs) {
+      const score = st.video * 1000 + Math.min(st.audio, st.ini) * 2 + st.audio;
+      if (st.audio && score > bestScore) { best = d; bestScore = score; }
+    }
+    if (best === null) return null;
+    const out = [];
+    for (const e of entries) {
+      if (e.dir || dirOf(e.name) !== best) continue;
+      const n = safeName(baseOf(e.name));
+      if (n) out.push({ name: n, size: e.size });
+    }
+    return out;
+  }
+
+  /** Fragt den Server. -> true, wenn das Pack schon steht. */
+  async function knownPack(files, orderMode) {
+    const list = (files || []).map((f) => ({ name: safeName(f.name), size: f.size })).filter((f) => f.name);
+    if (!list.length) return false;
+    try {
+      const r = await fetch(auth(`/api/rooms/${S.code}/dub/pack/known`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: list, orderMode }),
+      });
+      return !!(await r.json())?.have;
+    } catch {
+      return false;
+    }
+  }
+
   async function uploadZip(file) {
     const order = dv()?.orderMode || 'chrono';
     try {
+      setUp(t('Pack wird gesucht …'));
+      const inside = packFilesOfZip((await zipList(file).catch(() => null)) || []);
+      if (inside && await knownPack(inside, order)) {
+        setUp('');
+        toast(t('Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.'));
+        return;
+      }
       setUp(t(`Hochladen: 0 von ${mb(file.size)} MB`));
       await xhr('PUT', auth(`/api/rooms/${S.code}/dub/pack/zip?order=${order}`), file, (a, b) => setUp(t(`Hochladen: ${mb(a)} von ${mb(b)} MB`)));
       setUp('');
@@ -1511,7 +1631,14 @@ void main() {
     if (!files.length) return;
     const total = files.reduce((s, f) => s + f.size, 0);
     let done = 0;
+    const order = dv()?.orderMode || 'chrono';
     try {
+      setUp(t('Pack wird gesucht …'));
+      if (await knownPack(files, order)) {
+        setUp('');
+        toast(t('Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.'));
+        return;
+      }
       await xhr('POST', auth(`/api/rooms/${S.code}/dub/pack/begin`), null);
       for (const f of files) {
         await xhr('PUT', auth(`/api/rooms/${S.code}/dub/pack/file?name=${encodeURIComponent(f.name)}`), f,
@@ -1519,7 +1646,7 @@ void main() {
         done += f.size;
       }
       setUp(t('Pack wird eingelesen …'));
-      await xhr('POST', auth(`/api/rooms/${S.code}/dub/pack/commit`), JSON.stringify({ orderMode: dv()?.orderMode || 'chrono' }));
+      await xhr('POST', auth(`/api/rooms/${S.code}/dub/pack/commit`), JSON.stringify({ orderMode: order }));
       setUp('');
     } catch (e) {
       setUp('');

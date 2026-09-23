@@ -351,4 +351,6 @@ window.VG_LANG.el = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'Το pack ετοιμάζεται για τον browser … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'Το pack για τον browser ανεβαίνει … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'Το βίντεο δημιουργείται σε αυτόν τον υπολογιστή … {} %',
+  'Pack wird gesucht …': 'Αναζήτηση pack …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'Ο διακομιστής γνωρίζει ήδη αυτό το pack, δεν χρειάστηκε να ανέβει τίποτα.',
 } };

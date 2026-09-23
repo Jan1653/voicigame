@@ -351,4 +351,6 @@ window.VG_LANG.hi = { strings: {
   'Pack wird für den Browser vorbereitet … {} %': 'पैक ब्राउज़र के लिए तैयार हो रहा है … {} %',
   'Browser-Pack wird hochgeladen … {} %': 'ब्राउज़र पैक अपलोड हो रहा है … {} %',
   'Video wird auf diesem PC erstellt … {} %': 'वीडियो इसी पीसी पर बन रहा है … {} %',
+  'Pack wird gesucht …': 'पैक खोजा जा रहा है …',
+  'Der Server kennt dieses Pack schon, es musste nichts hochgeladen werden.': 'सर्वर इस पैक को पहले से जानता है, कुछ भी अपलोड नहीं करना पड़ा।',
 } };
