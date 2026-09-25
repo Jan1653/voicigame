@@ -140,6 +140,17 @@ label { display: flex; flex-direction: column; gap: 6px; font-weight: 800; font-
 .claim.mine { background: linear-gradient(180deg, #c9f59c, #8fd85b); border-color: var(--leaf-deep); }
 .claim.taken { opacity: .6; cursor: default; }
 .claim:focus-visible { outline: 3px solid var(--aqua); outline-offset: 2px; }
+/* Figur mit Auswahl, wer sie an diesem Gerät spricht */
+.claim-pick { cursor: default; }
+.claim-pick select { margin-top: 6px; width: 100%; font: inherit; font-weight: 700; font-size: .9rem;
+  padding: 6px 8px; border-radius: 12px; border: 1px solid rgba(10,111,168,.35); background: rgba(255,255,255,.9); color: var(--ink); }
+.claim-pick select:disabled { opacity: .6; }
+/* Namensfeld für Leute am selben Gerät */
+.dub-local-add { display: flex; gap: 8px; margin-top: 8px; }
+.dub-local-add input { flex: 1; min-width: 0; }
+/* Wer an diesem Gerät gerade dran ist */
+.dub-handover { margin: 4px 0 8px; padding: 8px 12px; border-radius: 14px; text-align: center; font-weight: 900;
+  background: linear-gradient(180deg, #ffe89a, #ffd75e); color: #3a2c00; }
 
 .order-list { margin: 10px 0 0; padding-left: 1.4em; font-weight: 700; }
 .order-list li.me { color: var(--leaf-deep); }

@@ -1822,7 +1822,13 @@ export function installDub(app, ctx) {
   r.post('/:code/dub/takes/:clipId', async (req, res) => {
     const a = auth(req, res);
     if (!a) return;
-    const pid = a.host && req.query.player ? String(req.query.player) : a.player?.id;
+    // Das Spiel lädt für die Leute am PC hoch (Host-Schlüssel), ein Handy für die, die sich sein Gerät teilen
+    let pid = a.player?.id;
+    if (req.query.player) {
+      const want = String(req.query.player);
+      if (a.host || a.room.ownerOf(want) === a.player?.id) pid = want;
+      else return res.status(403).json({ error: 'not_allowed' });
+    }
     if (!pid) return res.status(400).json({ error: 'no_player' });
     if (!checkStorage(res, dataDirOf(a.room), MB)) return;
     try {
@@ -1957,7 +1963,15 @@ export function installDub(app, ctx) {
         if (p?.kind === 'phone' && p.id !== from) {
           send(p.ws, { type: 'kicked' });
           p.ws?.close(4001, 'kicked');
+          for (const x of room.participants()) {
+            if (x.kind === 'local' && x.owner === p.id) d.onPlayerRemoved(x.id);
+          }
+          room.removeLocalsOf(p.id);
           room.removePlayer(p.id);
+          d.onPlayerRemoved(p.id);
+        } else if (p?.kind === 'local' && room.ownerOf(p.id) === from) {
+          // Wer jemanden an sein Gerät geholt hat, darf ihn auch wieder wegnehmen
+          room.removeLocal(p.id, from);
           d.onPlayerRemoved(p.id);
         }
         return true;
@@ -2054,8 +2068,12 @@ export function installDub(app, ctx) {
       const c = common(room, d, msg, ws, player.name, player.id);
       if (c !== null) return reply(room, ws, c);
       switch (msg.type) {
-        case 'dub.claim':
-          return reply(room, ws, d.claim(String(msg.character), player.id, msg.on) ? true : 'Diese Figur hat schon jemand.');
+        case 'dub.claim': {
+          // „for“: jemand, der sich dieses Gerät teilt. Ohne Angabe geht es um einen selbst.
+          const who = msg.for ? String(msg.for) : player.id;
+          if (who !== player.id && room.ownerOf(who) !== player.id) return reply(room, ws, 'Das ist nicht dein Mitspieler.');
+          return reply(room, ws, d.claim(String(msg.character), who, msg.on) ? true : 'Diese Figur hat schon jemand.');
+        }
         case 'dub.ready': {
           const have = Math.max(0, Number(msg.have) || 0), need = Math.max(0, Number(msg.need) || 0);
           const before = d.isReady(player.id);
@@ -2068,6 +2086,11 @@ export function installDub(app, ctx) {
         }
         case 'dub.spectate':
           d.setSpectator(player.id, !!msg.on);
+          return reply(room, ws, true);
+        case 'dub.activity.for':
+          if (room.ownerOf(String(msg.playerId || '')) === player.id) {
+            d.activity.set(String(msg.playerId), { what: String(msg.what || '').slice(0, 20), at: Date.now() });
+          }
           return reply(room, ws, true);
         case 'dub.activity':
           d.activity.set(player.id, { what: String(msg.what || '').slice(0, 20), at: Date.now() });

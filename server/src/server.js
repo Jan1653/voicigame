@@ -563,6 +563,11 @@ function handleHost(room, ws, msg) {
         send(p.ws, { type: 'kicked' });
         p.ws?.close(4001, 'kicked');
       }
+      // Auch die Leute, die sich sein Gerät geteilt haben
+      for (const x of room.participants()) {
+        if (x.kind === 'local' && x.owner === msg.playerId) dub.onRemoved(room, x.id);
+      }
+      room.removeLocalsOf(String(msg.playerId));
       room.removePlayer(msg.playerId);
       dub.onRemoved(room, msg.playerId);
       break;
@@ -685,6 +690,7 @@ function handleHost(room, ws, msg) {
 
 function handlePhone(room, player, msg) {
   if (dub.onPhone(room, player, msg)) return;
+  const err = (code, message) => send(player.ws, { type: 'error', code, message });
   switch (msg.type) {
     case 'watch':
       player.watch = !!msg.on;
@@ -692,6 +698,23 @@ function handlePhone(room, player, msg) {
       break;
     case 'claim.toggle':
       room.toggleClaim(String(msg.character), player.id);
+      break;
+    // Mitspieler, die sich dieses Gerät teilen: anlegen, umbenennen, entfernen
+    case 'local.add': {
+      if (!room.dub) return err('no_dub', 'Das geht nur beim Synchronisieren.');
+      const p = room.addLocal(String(msg.name || ''), player.id);
+      if (!p) return err('too_many', 'An einem Gerät können höchstens fünf Leute mitspielen.');
+      countStat('players_local');
+      break;
+    }
+    case 'local.rename':
+      room.renameLocal(String(msg.playerId || ''), String(msg.name || ''), player.id);
+      break;
+    case 'local.remove':
+      // Nur wer den Mitspieler geholt hat, darf ihn wieder wegnehmen
+      if (room.removeLocal(String(msg.playerId || ''), player.id)) {
+        room.dub?.onPlayerRemoved(String(msg.playerId || ''));
+      }
       break;
     case 'clip.cached': {
       const ids = Array.isArray(msg.clipIds) ? msg.clipIds : [msg.clipId];
@@ -711,6 +734,11 @@ function handlePhone(room, player, msg) {
       return; // kein State-Broadcast nötig
     }
     case 'leave':
+      // Wer geht, nimmt die Leute mit, die sich sein Gerät geteilt haben
+      for (const p of room.participants()) {
+        if (p.kind === 'local' && p.owner === player.id) dub.onRemoved(room, p.id);
+      }
+      room.removeLocalsOf(player.id);
       room.removePlayer(player.id);
       dub.onRemoved(room, player.id);
       player.ws?.close(1000, 'left');

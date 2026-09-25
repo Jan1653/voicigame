@@ -33,6 +33,7 @@
     busy: 0,
     turnKey: '',
     mine: false,
+    forPid: '',                   // für wen dieses Gerät gerade aufnimmt (ich oder jemand daneben)
     mode: 'idle',                 // idle | first | listen | record | synced | send | sent
     take: null,                   // {pcm, rate, an}
     attempts: 0,
@@ -636,7 +637,7 @@
     recNode.setOn(true);
     // Beim Aufnehmen still (am Handy Standard): sonst nimmt das Mikro die Originalstimme mit auf
     const player = playBuffers([{ buf, gain: D.opts.muteClip || D.opts.quietRec ? 0 : D.opts.clipVol }], null);
-    wsSend({ type: 'dub.activity', what: 'record' });
+    sendActivity('record');
     renderRemote();
     const done = new Promise((resolve) => {
       D.rec = { stop: resolve };
@@ -658,7 +659,7 @@
     D.take = { pcm: take, rate, an: waveData([take], rate) };
     D.live = null;
     D.mode = 'idle';
-    wsSend({ type: 'dub.activity', what: 'review' });
+    sendActivity('review');
     renderRemote();
     drawWave();
   }
@@ -739,7 +740,8 @@
       } catch {}
       let ok = false;
       for (let i = 0; i < 3 && !ok; i++) {
-        const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(clip.id)}`), {
+        const forPid = D.forPid && D.forPid !== S.playerId ? `?player=${encodeURIComponent(D.forPid)}` : '';
+        const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(clip.id)}${forPid}`), {
           method: 'POST',
           headers: { 'Content-Type': 'audio/wav', ...(score ? { 'X-Phone-Score': JSON.stringify(score) } : {}) },
           body: blob,
@@ -1132,6 +1134,7 @@ void main() {
           </div>
           <div>
             <div class="glass" data-id="invite-card" hidden></div>
+            <div class="glass" data-id="locals-card"></div>
             <div class="glass" data-id="players-card"></div>
             <div class="glass dub-start" data-id="start-card"></div>
             <div class="glass dub-chat" data-id="chat-hub"></div>
@@ -1222,6 +1225,7 @@ void main() {
     renderPackCard(d);
     renderChars(d);
     renderInvite(d);
+    renderLocals(d);
     renderPlayers(d);
     renderStart(d);
     renderChat($id('chat-hub'), d);
@@ -1319,7 +1323,10 @@ void main() {
     card.innerHTML = html;
     if (!d.chrono) {
       const grid = node('div', 'claim-grid');
+      const here = myLocals();
       for (const c of d.characters) {
+        // Teilen sich mehrere dieses Gerät, wird ausgewählt, wer die Figur spricht
+        if (here.length) { grid.append(claimPicker(c, here, d)); continue; }
         const b = node('button', 'claim');
         b.type = 'button';
         const mine = c.claimedBy === S.playerId;
@@ -1346,6 +1353,43 @@ void main() {
     }
   }
 
+  /** Figur mit Auswahl, wer sie an diesem Gerät spricht. */
+  function claimPicker(c, here, d) {
+    const box = node('div', 'claim claim-pick');
+    const ours = myPids().includes(c.claimedBy);
+    const taken = c.claimedBy && !ours;
+    if (ours) box.className += ' mine';
+    if (taken) box.className += ' taken';
+    if (!c.claimedBy) box.className += ' free';
+    const lines = c.lines === 1 ? t('1 Zeile') : t(`${c.lines} Zeilen`);
+    box.append(node('strong', null, c.name), node('span', null, taken ? `${pname(c.claimedBy)} · ${lines}` : lines));
+    const sel = node('select', 'field');
+    sel.dataset.claimPick = c.name;
+    sel.disabled = !!taken || d.me?.spectator;
+    const opt = (value, label, on) => {
+      const o = document.createElement('option');
+      o.value = value;
+      o.textContent = label;
+      o.selected = on;
+      sel.append(o);
+    };
+    opt('', t('frei'), !c.claimedBy);
+    opt(S.playerId, t('Ich'), c.claimedBy === S.playerId);
+    for (const p of here) opt(p.id, p.name, c.claimedBy === p.id);
+    if (taken) opt(c.claimedBy, pname(c.claimedBy), true);
+    box.append(sel);
+    return box;
+  }
+
+  /** Auswahl geändert: die Figur erst freigeben, dann dem Neuen geben. */
+  function pickClaim(character, pid) {
+    const d = dv();
+    const now = (d?.characters || []).find((c) => c.name === character)?.claimedBy || '';
+    if (now === pid) return;
+    if (now && myPids().includes(now)) wsSend({ type: 'dub.claim', character, on: false, for: now });
+    if (pid) wsSend({ type: 'dub.claim', character, on: true, for: pid });
+  }
+
   function renderInvite(d) {
     const card = $id('invite-card');
     card.hidden = !(d.source !== 'game' && d.me?.leader);
@@ -1356,6 +1400,69 @@ void main() {
     card.innerHTML = `<h2>${t('Leute einladen')}</h2><div class="dub-invite"><img alt="${t('QR-Code zum Beitreten')}" src="/api/rooms/${S.code}/qr.png"><div><p class="dub-code"></p><p class="dub-link"></p><button type="button" class="btn btn-soft" data-act="copy">${t('Link kopieren')}</button></div></div>`;
     card.querySelector('.dub-code').textContent = S.code;
     card.querySelector('.dub-link').textContent = url;
+  }
+
+  /* ---------- Leute am selben Gerät ----------
+   * Wenn mehrere vor einem Handy oder Laptop sitzen, bekommt jeder einen eigenen Platz im Raum:
+   * eigene Figuren, eigene Zeilen, eigene Aufnahmen. Aufgenommen wird auf diesem Gerät, und vor
+   * jeder Zeile steht oben, wer jetzt dran ist. */
+
+  /** Die Leute, die sich dieses Gerät mit mir teilen. */
+  function myLocals() {
+    return (S.state?.players || []).filter((p) => p.owner === S.playerId);
+  }
+
+  /** Alle, für die dieses Gerät aufnimmt: ich selbst und meine Mitspieler. */
+  function myPids() {
+    return [S.playerId, ...myLocals().map((p) => p.id)];
+  }
+
+  const nameOfPid = (pid) => (S.state?.players || []).find((p) => p.id === pid)?.name || '?';
+
+  function renderLocals(d) {
+    const card = $id('locals-card');
+    const mine = myLocals();
+    // In einer laufenden Runde nicht mehr ändern: die Zeilen sind dann schon verteilt
+    card.hidden = d.phase !== 'hub' || d.me?.spectator;
+    if (card.hidden) return;
+    if (same(card, JSON.stringify(['lo', mine.map((p) => [p.id, p.name]), d.phase]))) return;
+    card.innerHTML = `<h2>${t('Leute an diesem Gerät')}</h2>
+      <p class="muted small">${t('Sitzt jemand neben dir? Trag ihn hier ein, dann bekommt er eigene Figuren und Zeilen. Vor jeder Zeile steht oben, wer dran ist.')}</p>`;
+    if (mine.length) {
+      const ul = node('ul', 'player-list');
+      for (const p of mine) {
+        const li = node('li');
+        li.append(node('span', null, p.name));
+        const k = node('button', 'dub-kick', '✕');
+        k.type = 'button';
+        k.dataset.localRemove = p.id;
+        k.title = t('Entfernen');
+        k.setAttribute('aria-label', t('Entfernen'));
+        li.append(node('span', 'tag'), k);
+        ul.append(li);
+      }
+      card.append(ul);
+    }
+    const row = node('div', 'dub-local-add');
+    const input = node('input', 'field');
+    input.type = 'text';
+    input.maxLength = 24;
+    input.placeholder = t('Name');
+    input.dataset.id = 'local-name';
+    const add = node('button', 'btn btn-soft', t('Dazu'));
+    add.type = 'button';
+    add.dataset.act = 'local-add';
+    row.append(input, add);
+    card.append(row);
+  }
+
+  /** Namen aus dem Feld schicken. */
+  function addLocal() {
+    const input = $id('local-name');
+    const name = (input?.value || '').trim();
+    if (!name) return input?.focus();
+    wsSend({ type: 'local.add', name });
+    input.value = '';
   }
 
   function renderPlayers(d) {
@@ -1369,7 +1476,10 @@ void main() {
       li.append(node('span', null, p.name + (p.id === S.playerId ? ' ' + t('(du)') : '')));
       const tag = node('span', 'tag');
       if (p.id === d.leader) { const lt = node('span', 'dub-lead-tag', t('Leitung')); li.firstChild.append(' ', lt); }
-      if (p.kind === 'local') { tag.textContent = t('am PC'); tag.className += ' ok'; }
+      if (p.kind === 'local' && p.owner) {
+        tag.textContent = p.owner === S.playerId ? t('an deinem Gerät') : t(`bei ${nameOfPid(p.owner)}`);
+        tag.className += ' ok';
+      } else if (p.kind === 'local') { tag.textContent = t('am PC'); tag.className += ' ok'; }
       else if (!p.connected) { tag.textContent = t('getrennt'); tag.className += ' off'; }
       else if (info.spectator) tag.textContent = t('schaut zu');
       else if (!d.pack) tag.textContent = t('dabei');
@@ -1670,9 +1780,13 @@ void main() {
   function renderTurn(d) {
     const turn = d.turn;
     const clip = currentClip();
-    const key = turn ? `${turn.index}:${turn.clipId}:${D.pack ? 1 : 0}` : '';
-    const me = turn?.recorders.find((r) => r.id === S.playerId);
-    D.mine = !!me && !me.done && !me.skipped;
+    // Dieses Gerät nimmt für mich auf und für alle, die es sich mit mir teilen
+    const pids = myPids();
+    const open = (turn?.recorders || []).filter((r) => pids.includes(r.id) && !r.done && !r.skipped);
+    const who = open[0] || null;
+    D.forPid = who ? who.id : S.playerId;
+    const key = turn ? `${turn.index}:${turn.clipId}:${D.forPid}:${D.pack ? 1 : 0}` : '';
+    D.mine = !!who;
     $id('results').hidden = true;
     $id('video').hidden = true;
     $id('wave').hidden = false;
@@ -1720,7 +1834,7 @@ void main() {
     if (an) {
       D.mode = 'first';
       renderRemote();
-      if (D.mine) wsSend({ type: 'dub.activity', what: 'listen' });
+      if (D.mine) sendActivity('listen');
       const buf = await getBuffer(clip.audio);
       playBuffers([{ buf, gain: D.opts.muteClip ? 0 : 1 }], () => {
         if (myKey !== D.turnKey) return;
@@ -1802,8 +1916,10 @@ void main() {
     const turn = d.turn;
     const clip = currentClip();
     const busy = D.mode === 'first' || D.mode === 'send';
-    if (same(box, JSON.stringify(['r', D.mode, D.mine, D.attempts, !!D.take, D.turnKey, d.done, d.total, d.turn, d.offer, d.players.map((p) => [p.id, p.activity, p.spectator]), S.state.players.map((p) => p.name), D.opts.oneTake, D.opts.quietRec, d.turns.length, clip?.id]))) return;
+    if (same(box, JSON.stringify(['r', D.mode, D.mine, D.forPid, D.attempts, !!D.take, D.turnKey, d.done, d.total, d.turn, d.offer, d.players.map((p) => [p.id, p.activity, p.spectator]), S.state.players.map((p) => p.name), D.opts.oneTake, D.opts.quietRec, d.turns.length, clip?.id]))) return;
     let html = `<h3>${turn ? t(`Zeile ${d.done + 1} von ${d.total}`) : ''}</h3>`;
+    const hand = handOver();
+    if (hand) html += `<p class="dub-handover">${hand}</p>`;
     html += offerHtml(d);
     html += `<p class="dub-speaker">${clip?.chars?.length ? SPEAKER : ''}<span data-f="chars"></span></p>`;
     if (D.mine) {
@@ -1855,13 +1971,30 @@ void main() {
     renderOnscreen(d, []);
   }
 
-  const me = (turn) => turn?.recorders.find((r) => r.id === S.playerId);
+  const me = (turn) => turn?.recorders.find((r) => myPids().includes(r.id));
 
   function nextMine(d) {
-    const i = d.turns.findIndex((x, k) => k > d.turn.index && x.recorders.includes(S.playerId));
+    const pids = myPids();
+    const i = d.turns.findIndex((x, k) => k > d.turn.index && x.recorders.some((r) => pids.includes(r)));
     if (i < 0) return '';
     const n = i - d.turn.index;
+    if (pids.length > 1) {
+      const next = d.turns[i].recorders.find((r) => pids.includes(r));
+      const nm = next === S.playerId ? t('Du') : nameOfPid(next);
+      return n === 1 ? t(`${nm} ist bei der nächsten Zeile dran.`) : t(`${nm} ist in ${n} Zeilen dran.`);
+    }
     return n === 1 ? t('Deine nächste Zeile kommt als Nächstes.') : t(`Deine nächste Zeile kommt in ${n} Zeilen.`);
+  }
+
+  /** „hört zu“, „nimmt auf“ … für den, der hier gerade dran ist. */
+  function sendActivity(what) {
+    if (D.forPid && D.forPid !== S.playerId) wsSend({ type: 'dub.activity.for', playerId: D.forPid, what });
+    else wsSend({ type: 'dub.activity', what });
+  }
+
+  /** Steht über der Zeile, wenn gerade jemand anderes an diesem Gerät dran ist. */
+  function handOver() {
+    return D.mine && D.forPid !== S.playerId ? t(`Jetzt ist ${nameOfPid(D.forPid)} dran, gib das Gerät weiter.`) : '';
   }
 
   function renderOnscreen(d, open) {
@@ -2127,8 +2260,14 @@ void main() {
       if (confirm(t(`${pname(kick.dataset.kick)} wirklich entfernen?`))) wsSend({ type: 'dub.kick', playerId: kick.dataset.kick });
       return;
     }
+    const rm = e.target.closest('[data-local-remove]');
+    if (rm) {
+      wsSend({ type: 'local.remove', playerId: rm.dataset.localRemove });
+      return;
+    }
     const b = e.target.closest('[data-act], [data-claim]');
     if (!b || b.disabled) return;
+    if (b.dataset.act === 'local-add') return addLocal();
     if (b.dataset.claim) return wsSend({ type: 'dub.claim', character: b.dataset.claim, on: b.dataset.on === 'true' });
     const d = dv();
     const clip = currentClip();
@@ -2147,7 +2286,7 @@ void main() {
         if (!clip) return;
         const buf = await getBuffer(clip.audio);
         D.mode = D.mine ? 'listen' : D.mode;
-        if (D.mine) wsSend({ type: 'dub.activity', what: 'listen' });
+        if (D.mine) sendActivity('listen');
         renderRemote();
         playBuffers([{ buf, gain: D.opts.muteClip ? 0 : 1 }], () => { if (D.mode === 'listen') D.mode = 'idle'; renderRemote(); });
         return;
@@ -2211,6 +2350,7 @@ void main() {
     const x = e.target;
     if (x.dataset.id === 'zip-input' && x.files[0]) { uploadZip(x.files[0]); x.value = ''; return; }
     if (x.dataset.id === 'dir-input' && x.files.length) { uploadFiles([...x.files]); x.value = ''; return; }
+    if (x.dataset.claimPick) return pickClaim(x.dataset.claimPick, x.value);
     if (x.dataset.act === 'chrono') return wsSend({ type: 'dub.settings', chrono: x.checked });
     if (x.dataset.act === 'waves') return wsSend({ type: 'dub.settings', waves: x.checked ? 'all' : 'off' });
     if (x.dataset.act === 'spectate') return wsSend({ type: 'dub.spectate', on: x.checked });

@@ -5,6 +5,9 @@ import { watcherCount } from './stream.js';
 import { observe } from './stats.js';
 import { storageDrop } from './limits.js';
 
+/** So viele Mitspieler darf ein Gerät höchstens mitbringen. */
+const MAX_LOCALS = 5;
+
 const rid = (bytes = 8) => crypto.randomBytes(bytes).toString('hex');
 
 /**
@@ -12,7 +15,8 @@ const rid = (bytes = 8) => crypto.randomBytes(bytes).toString('hex');
  *
  * Spielerarten:
  *   phone  Freund am Handy (lädt Clips runter, nimmt auf)
- *   local  Spieler direkt am PC (das Spiel kümmert sich selbst um ihn)
+ *   local  Spieler ohne eigenes Gerät. Ohne owner: direkt am PC, darum kümmert sich das Spiel.
+ *          Mit owner: jemand, der sich ein Handy oder einen Browser mit dem Besitzer teilt.
  *
  * Modi:
  *   claim   Jeder claimt Charaktere. Ein Clip geht an den, der seinen Charakter geclaimt hat.
@@ -131,6 +135,55 @@ export class Room {
     return null;
   }
 
+  /**
+   * Jemand, der sich ein Gerät mit einem anderen Spieler teilt. owner ist dessen Spieler-Nummer:
+   * dort wird aufgenommen, dort taucht „du bist dran“ auf. -> der neue Spieler oder null.
+   */
+  addLocal(name, owner) {
+    if (!owner) return null;
+    const mine = [...this.players.values()].filter((x) => x.kind === 'local' && x.owner === owner && !x.left);
+    if (mine.length >= MAX_LOCALS) return null;
+    let n = 1;
+    while (this.players.has('dev-' + n)) n++;
+    const p = {
+      id: 'dev-' + n, token: null, name: cleanName(name || `Spieler ${n}`), kind: 'local', slot: null, owner,
+      joinOrder: this.joinCounter++, ws: null, connected: true, left: false, cached: new Set(),
+    };
+    this.players.set(p.id, p);
+    this.recompute();
+    return p;
+  }
+
+  /** Umbenennen oder entfernen darf nur, wem der Spieler gehört. */
+  renameLocal(id, name, owner) {
+    const p = this.players.get(String(id));
+    if (!p || p.kind !== 'local' || p.owner !== owner) return false;
+    p.name = cleanName(name || p.name);
+    this.recompute();
+    return true;
+  }
+
+  removeLocal(id, owner) {
+    const p = this.players.get(String(id));
+    if (!p || p.kind !== 'local' || p.owner !== owner) return false;
+    this.removePlayer(p.id);
+    return true;
+  }
+
+  /** Wem gehört dieser Spieler? (Für „darf dieses Gerät für ihn aufnehmen?“) */
+  ownerOf(id) {
+    const p = this.players.get(String(id));
+    return p && p.kind === 'local' ? p.owner || null : null;
+  }
+
+  /** Das Gerät ist weg: seine Mitspieler auch. */
+  removeLocalsOf(owner) {
+    for (const p of [...this.players.values()]) {
+      if (p.kind === 'local' && p.owner === owner) this.removePlayer(p.id);
+    }
+  }
+
+  /** Spieler am PC, gemeldet vom Spiel. Rührt nur die an, die niemandem gehören. */
   setLocalPlayers(list) {
     const keep = new Set();
     for (const item of Array.isArray(list) ? list : []) {
@@ -147,7 +200,7 @@ export class Room {
         });
     }
     for (const p of [...this.players.values()]) {
-      if (p.kind === 'local' && !keep.has(p.id)) this.removePlayer(p.id);
+      if (p.kind === 'local' && !p.owner && !keep.has(p.id)) this.removePlayer(p.id);
     }
     this.recompute();
   }
@@ -355,6 +408,8 @@ export class Room {
       .map((p) => ({
         id: p.id, name: p.name, kind: p.kind, slot: p.slot, connected: p.connected,
         game: p.client === 'game',   // tritt aus dem eigenen Spiel mit Mod bei
+        owner: p.owner || null,      // teilt sich das Gerät mit diesem Spieler
+        atPc: p.kind === 'local' && !p.owner,
         progress: p.kind === 'phone' ? this.progressFor(p) : null,
       }));
     const counts = {};
