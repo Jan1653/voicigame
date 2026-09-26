@@ -10,6 +10,12 @@ const SOURCE_PACK := "user://game/packs_voice/Family Guy - Sneakers O'Toole/"
 const TEST_PACK := "user://voicigame_test/pack/Voicigame Dub [Test]/"
 const TEMP_SESSION := "user://game/.temp/dub_mode/Voicigame Dub [Test]"
 
+
+## Pack für die Fotos: Ordnername unter packs_voice in der Umgebungsvariable VG_PACK, sonst das Test-Pack.
+func _shot_pack() -> String:
+	var name := OS.get_environment("VG_PACK")
+	return "user://game/packs_voice/%s/" % name if name != "" else SOURCE_PACK
+
 var d: Node   # der Testtreiber (Fotos, Protokoll, Suchen)
 
 
@@ -43,9 +49,10 @@ func _wait(s: float) -> void:
 
 
 func _dubshot() -> void:
-	var res = GameplayResourceDubMode.new(SOURCE_PACK)
+	var pack := _shot_pack()
+	var res = GameplayResourceDubMode.new(pack)
 	if res.failed_to_load:
-		d._note("FEHLER: Test-Pack nicht lesbar")
+		d._note("FEHLER: Pack nicht lesbar: " + pack)
 		return
 	d._note("Pack: %s, %d Clips, Video: %s" % [res.pack_info.display_name, res.omni_clip_array.data.size(), res.video != null])
 	var metro = d.get_node("/root/Metro")
