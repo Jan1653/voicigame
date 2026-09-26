@@ -19,7 +19,11 @@ function reportError(msg, where) {
     }
   } catch {}
 }
-addEventListener('error', (e) => reportError(e.message, `${(e.filename || '').split('/').pop()}:${e.lineno || ''}`));
+addEventListener('error', (e) => {
+  // Ohne Datei und Zeile steckt fremder Code dahinter (meist eine Browser-Erweiterung): nicht melden
+  if (!e.filename && /^script error/i.test(String(e.message || ''))) return;
+  reportError(e.message, `${(e.filename || '').split('/').pop()}:${e.lineno || ''}`);
+});
 addEventListener('unhandledrejection', (e) => reportError(e.reason?.message || e.reason, 'promise'));
 
 /** Name (wird nie übersetzt) plus optionaler Zusatz wie „(du)“, der übersetzt wird. */

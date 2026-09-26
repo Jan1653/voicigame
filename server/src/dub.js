@@ -283,13 +283,22 @@ export class DubSession {
     if (!this.plan || this.plan.complete) return true;
     if (this.exportPending && !this.webHas(this.pack?.video)) return true;
     if (this.needy('game') > 0) return true;
-    if (!this.web.can && this.needy('web') > 0) return true;
+    if ((!this.web.can || this.web.badVideo) && this.needy('web') > 0) return true;
     return false;
   }
 
   emptyWeb() {
-    return { can: false, size: 0, bytes: 0, complete: false, head: 0, assets: new Map(),
+    return { can: false, size: 0, bytes: 0, complete: false, head: 0, assets: new Map(), badVideo: false,
       file: path.join(this.dir, 'web', 'pack.vgpack'), notifiedAt: 0 };
+  }
+
+  /** Spielt das Video aus dem Web-Pack in Browsern? Theora tut das nicht (Chrome kann es nicht mehr). */
+  webVideoOk() {
+    for (const [name, a] of this.web.assets) {
+      if (!/^dub_video\./i.test(name)) continue;
+      return ['video/mp4', 'video/webm'].includes(a.m);
+    }
+    return true;
   }
 
   /** Verzeichnis des Web-Packs lesen, sobald die ersten Bytes da sind. -> hat geklappt? */
@@ -303,6 +312,9 @@ export class DubSession {
       if (!m) return false;
       this.web.head = m.end;
       this.web.assets = assetsOf(m.manifest, m.end, this.web.size || st.size);
+      // Ein Pack, dessen Video nicht umgewandelt wurde, nützt den Browsern nichts: dann macht es der Server
+      this.web.badVideo = !this.webVideoOk();
+      if (this.web.badVideo) console.warn('Web-Pack ohne umgewandeltes Video, der Server wandelt selbst um');
       return this.web.assets.size > 0;
     } catch (e) {
       console.warn('Web-Pack:', e.message);
@@ -579,7 +591,7 @@ export class DubSession {
   /** Braucht jemand das Video vom Server? Nur Browser ohne eigenen Zwischenspeicher; PCs mit Mod haben das Pack.
    *  Ohne solche Leute wird gar nicht erst umgewandelt: das ist die teuerste Arbeit auf dem Server. */
   needsWebVideo() {
-    if (this.web.can) return false;   // der PC liefert das Video fertig mit, der Server wandelt nichts um
+    if (this.web.can && !this.web.badVideo) return false;   // der PC liefert das Video fertig mit
     for (const p of this.room.players.values()) {
       if (p.kind !== 'phone' || !p.connected || p.left || p.client === 'game') continue;
       const r = this.ready.get(p.id);
@@ -591,7 +603,7 @@ export class DubSession {
   /** Wird gerufen, sobald jemand dazukommt oder meldet, dass ihm etwas fehlt. */
   maybePrepareVideo() {
     // Aus dem Web-Pack kommt es fertig: nichts umwandeln, nur eintragen
-    if (this.pack?.video && this.webHas(this.pack.video) && !this.video.part) {
+    if (this.pack?.video && this.webHas(this.pack.video) && !this.web.badVideo && !this.video.part) {
       const a = this.web.assets.get(this.pack.video);
       this.video = { status: 'ready', pct: 1, file: this.web.file, part: { off: a.o, len: a.l },
         mime: a.m || 'video/mp4', duration: this.video.duration || a.d || 0, height: 0, codec: 'h264', h264: true };
@@ -607,7 +619,7 @@ export class DubSession {
 
   async prepareVideo() {
     // Liegt es fertig im Web-Pack, ist nichts zu tun
-    if (this.pack?.video && this.webHas(this.pack.video)) return this.maybePrepareVideo();
+    if (this.pack?.video && this.webHas(this.pack.video) && !this.web.badVideo) return this.maybePrepareVideo();
     // Aus dem Pack-Speicher: einmal umgewandelt reicht für immer
     if (this.knownVideo && fs.existsSync(this.knownVideo)) {
       Object.assign(this.video, { status: 'ready', pct: 1, file: this.knownVideo, part: null, mime: 'video/mp4', h264: true });

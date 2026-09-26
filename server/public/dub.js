@@ -81,7 +81,10 @@
     try { localStorage.setItem(OPTS_KEY, JSON.stringify(D.opts)); } catch {}
   }
   const $d = (s) => document.querySelector('#view-dub ' + s);
-  const auth = (url) => url + (url.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(S.token || '');
+  /** Adresse fürs Fehlerprotokoll: ohne Zugangsschlüssel und ohne Raumcode. */
+  const short = (url) => String(url || '').split('?')[0].replace(/\/api\/rooms\/[A-Z]{4}\//, '/');
+
+  const auth = (url) = url + (url.includes('?') ? '&' : '?') + 't=' + encodeURIComponent(S.token || '');
   const dv = () => S.state?.dub || null;
   const pname = (id) => S.state?.players?.find((p) => p.id === id)?.name || dv()?.takes?.find((x) => x.playerId === id)?.name || t('Jemand');
   const isLeader = () => !!dv()?.me?.leader;
@@ -250,7 +253,7 @@
       const cache = await openCache();
       if (!cache || v !== D.version) return;
       const r = await fetch(auth(`/api/rooms/${S.code}/dub/video`));
-      if (!r.ok || v !== D.version) throw new Error('HTTP ' + r.status);
+      if (!r.ok || v !== D.version) throw new Error(`HTTP ${r.status} ${short(r.url)}`);
       await cache.put(`/vgcache/${D.fp}/video`, r);
     })().catch((e) => { console.warn('Video speichern', e); videoSaving = null; });
   }
@@ -299,7 +302,7 @@
 
   async function fetchBlob(u) {
     const r = await fetch(/\.(ogg|opus|flac|wav|mp3|m4a|aac)$/i.test(decodeURIComponent(u)) ? audioUrl(u) : auth(u));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${short(r.url)}`);
     toCache(u, r.clone());
     return r.blob();
   }
@@ -881,7 +884,7 @@ void main() {
     (async () => {
       const bufs = await Promise.all(takes.map(async (x) => {
         const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(x.clipId)}/${encodeURIComponent(x.playerId)}`));
-        if (!r.ok) throw new Error('HTTP ' + r.status);
+        if (!r.ok) throw new Error(`HTTP ${r.status} ${short(r.url)}`);
         return S.ctx.decodeAudioData(await r.arrayBuffer());
       }));
       // Zwei Leute in einer Zeile: zusammen als eine Wellenform
@@ -1018,7 +1021,7 @@ void main() {
     let blob = D.takeBlobs.get(k);
     if (!blob) {
       const r = await fetch(auth(`/api/rooms/${S.code}/dub/takes/${encodeURIComponent(x.clipId)}/${encodeURIComponent(x.playerId)}`));
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) throw new Error(`HTTP ${r.status} ${short(r.url)}`);
       blob = await r.blob();
       D.takeBlobs.set(k, blob);
     }
